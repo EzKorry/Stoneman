@@ -31,6 +31,7 @@ enum EntityCategory {
 	ENEMY_AIRCRAFT = 0x0010,
 };
 
+
 class STCamera;
 class GLESDebugDraw;
 class STWallBuilder;
@@ -56,16 +57,19 @@ public:
 	static float _timeScale;
 
 	
-
+	static IngameScene* getInstance();
 
 	b2Body* getCharBody();
 	std::vector<b2Body*> getWalls();
+
+	Scheduler* getLocalScheduler() const { return _localScheduler; }
+	Action * runLocalAction(Node* target, Action* action);
 
 
 
 private:
 
-
+	static IngameScene* _uniqueScene;
 
 	// character dashes.
 	void doDash();
@@ -109,10 +113,14 @@ private:
 	bool _characterHitLeftWallYes{ false };
 	bool _characterHitRightWallYes{ false };
 	float _hitPower;
+
 	STEffectConfigure _effectConf;
 	STEffectGenerator* _effectGen;
 	STWallBuilder* _wallBuilder;
 	
+	// localScheduler for slow motion.
+	Scheduler* _localScheduler{ nullptr };
+	ActionManager* _localActionManager{ nullptr };
 
 	
 	bool _checkJumpHighest{ false };

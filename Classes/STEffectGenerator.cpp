@@ -35,6 +35,7 @@ void STEffectGenerator::generateEffect(const STEffectConfigure & configure, cons
 		return;
 	}
 	auto world = IngameScene::getb2World();
+	if (world == nullptr) return;
 	//vector<b2Body*> bodies;
 
 	std::random_device rd;
@@ -130,7 +131,7 @@ void STEffectGenerator::generateEffect(const STEffectConfigure & configure, cons
 				b2Vec2(size / SCALE_RATIO * d_powerPoint(gen), size / SCALE_RATIO * d_powerPoint(gen)), true);
 		}
 		
-
+		// after duration, It will delete itself.
 		auto wait = DelayTime::create(duration);
 		auto opacity = FadeOut::create(0.5f);
 		auto del = CallFunc::create([pBody, world]()->void {
@@ -139,7 +140,8 @@ void STEffectGenerator::generateEffect(const STEffectConfigure & configure, cons
 			world->DestroyBody(pBody);
 		});
 		auto sequence = Sequence::create(wait, opacity, del, nullptr);
-		sp->runAction(sequence);
+		IngameScene::getInstance()->runLocalAction(sp, sequence);
+		//sp->runAction(sequence);
 		
 
 		//bodies.emplace_back(pBody);

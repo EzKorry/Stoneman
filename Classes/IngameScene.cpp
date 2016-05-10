@@ -23,9 +23,20 @@ using namespace arphomod;
 float IngameScene::_timeScale = 1.0f;
 std::shared_ptr<b2World> IngameScene::world = nullptr;
 const float IngameScene::OneBlockPx = 20.f;
+IngameScene* IngameScene::_uniqueScene = nullptr;
+
 bool IngameScene::init() {
 
 	if(!Scene::init()) return false;
+
+	//
+	_uniqueScene = this;
+
+	// custom Scheduler initializing.
+	_localScheduler = new (std::nothrow) Scheduler();
+	// action manager
+	_localActionManager = new (std::nothrow) ActionManager();
+	_localScheduler->scheduleUpdate(_localActionManager, Scheduler::PRIORITY_SYSTEM, false);
 
 	// initialize member variables.
 	_boxWidth = 30.f;
@@ -42,7 +53,7 @@ bool IngameScene::init() {
 
 	_camera->setField(_masterField);
 
-	this->addChild(_camera, 0, "camera");
+	this->addChild(_camera, 5, "camera");
 	this->addChild(_masterField, 0, "masterField");
 	_masterField->addChild(_box2dWorld, 0, "box2dWorld");
 
@@ -148,7 +159,7 @@ bool IngameScene::init() {
 	*/
 	addTextField([this](EditBox * editbox)->void {
 		_timeScale = std::atof(editbox->getText());
-		getScheduler()->setTimeScale(_timeScale);
+		_localScheduler->setTimeScale(_timeScale);
 	}, "timeScale");
 	addTextField(&_movePower, "movePower");
 	addTextField([this](EditBox * editbox)->void {
@@ -724,7 +735,10 @@ void IngameScene::addWall(float px, float py, float w, float h) {
 void IngameScene::update(float delta) {
 
 	// timeScale based delta time.
-	this->getScheduler()->setTimeScale(_timeScale);
+	//this->getScheduler()->setTimeScale(_timeScale);
+	// load local scheduler.
+	_localScheduler->update(delta);
+	_localScheduler->setTimeScale(_timeScale);
 	auto time = delta /* * _timeScale*/;
 
 	// moveButton
@@ -880,6 +894,11 @@ void IngameScene::draw(Renderer *renderer, const Mat4& transform, uint32_t trans
 
 
 
+IngameScene * IngameScene::getInstance()
+{
+	return _uniqueScene;
+}
+
 b2Body* IngameScene::getCharBody() {
 	return _charBody;
 }
@@ -888,6 +907,14 @@ std::vector<b2Body*> IngameScene::getWalls() {
 	return _walls;
 }
 
+Action * IngameScene::runLocalAction(Node* target, Action* action)
+{
+	CCASSERT(action != nullptr, "Argument must be non-nil");
+	_localActionManager->addAction(action, target, !target->isRunning());
+	return action;
+}
+
+
 
 IngameScene::IngameScene() {
 	// TODO Auto-generated constructor stub
@@ -895,6 +922,9 @@ IngameScene::IngameScene() {
 }
 
 IngameScene::~IngameScene() {
+
+	CC_SAFE_RELEASE(_localScheduler);
+	CC_SAFE_RELEASE(_localActionManager);
 	// TODO Auto-generated destructor stub
 }
 
