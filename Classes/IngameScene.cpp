@@ -20,6 +20,7 @@
 #include <sstream>
 #include <future>
 #include <json.hpp>
+#include <boost/locale.hpp>
 
 USING_NS_CC;
 using json = nlohmann::json;
@@ -70,8 +71,16 @@ bool IngameScene::init() {
 		ss.clear();
 	}
 	*/
-	auto writablePath = FileUtils::getInstance()->getWritablePath();
-	cocos2d::log("%s", writablePath.c_str());
+	auto fu = FileUtils::getInstance();
+	auto writablePath = fu->getWritablePath();
+	_debugBox->get() << writablePath << DebugBox::push
+		<< fu->fullPathForFilename("char2.png") << DebugBox::push;
+	for (auto& item : fu->getSearchPaths()) {
+		_debugBox->get() << item << DebugBox::push;
+	}
+
+		
+
 
 	// custom Scheduler initializing.
 	_localScheduler = new (std::nothrow) Scheduler();
@@ -99,38 +108,15 @@ bool IngameScene::init() {
 	
 	// font test
 	TTFConfig conf("fonts/SpoqaHsRegular.ttf", 24);
-	auto label = STLabel::createWithTTF(conf, "sssssssssssssssssssss");
+	auto label = STLabel::createWithTTF(conf, "한글이될까");
 	_masterField->addChild(label, 30);
 	label->setPosition(100, 200);
 
-	//---------------------
-	// effect manager
-	//---------------------
-	_effectGen = STEffectGenerator::create();
-	_masterField->addChild(_effectGen);
+	
 
 
-	/// effect setting!!///
-	_effectConf.count = 10;
-	_effectConf.minPower = 0.5f; // 0.5
-	_effectConf.maxPower = 2.5f; // 2.5
-	_effectConf.minSize = 1.f;
-	_effectConf.maxSize = 7.f;
-	_effectConf.minGravityScale = 0.8f; // 0.8
-	_effectConf.maxGravityScale = 0.8f; // 0.8
-	_effectConf.minDuration = 3.f;
-	_effectConf.maxDuration = 5.f;
-	_effectConf.restitution = 0.4f;
-	_effectConf.friction = 0.2f; // 0.2
-	_effectConf.diffuseX = 40.f;
-	_effectConf.diffuseY = 0.f;
-	_effectConf.color = cocos2d::Color3B(107, 88, 71);
-	_effectConf.minAlpha = 200.f;
-	_effectConf.maxAlpha = 200.f;
-	_effectConf.colorBrightnessRange = 30;
-	_effectConf.fixedRotation = false;
-	_effectConf.type = STEffectType::Boom;
 
+	initializeEffectManager();
 	initializePhysics();
 	debugVariable();
 	gameInterface();
@@ -590,6 +576,36 @@ void IngameScene::initializePhysics()
 
 	});
 }
+void IngameScene::initializeEffectManager()
+{
+	//---------------------
+	// effect manager
+	//---------------------
+	_effectGen = STEffectGenerator::create();
+	_masterField->addChild(_effectGen);
+
+
+	/// effect setting!!///
+	_effectConf.count = 10;
+	_effectConf.minPower = 0.5f; // 0.5
+	_effectConf.maxPower = 2.5f; // 2.5
+	_effectConf.minSize = 1.f;
+	_effectConf.maxSize = 7.f;
+	_effectConf.minGravityScale = 0.8f; // 0.8
+	_effectConf.maxGravityScale = 0.8f; // 0.8
+	_effectConf.minDuration = 3.f;
+	_effectConf.maxDuration = 5.f;
+	_effectConf.restitution = 0.4f;
+	_effectConf.friction = 0.2f; // 0.2
+	_effectConf.diffuseX = 40.f;
+	_effectConf.diffuseY = 0.f;
+	_effectConf.color = cocos2d::Color3B(107, 88, 71);
+	_effectConf.minAlpha = 200.f;
+	_effectConf.maxAlpha = 200.f;
+	_effectConf.colorBrightnessRange = 30;
+	_effectConf.fixedRotation = false;
+	_effectConf.type = STEffectType::Boom;
+}
 void IngameScene::jumpClicked() {
 	
 	// jump must exist only 1 until hit the ground.
@@ -925,8 +941,6 @@ Action * IngameScene::runLocalAction(Node* target, Action* action)
 	return action;
 }
 
-
-
 IngameScene::IngameScene() {
 	// TODO Auto-generated constructor stub
 
@@ -939,3 +953,19 @@ IngameScene::~IngameScene() {
 	// TODO Auto-generated destructor stub
 }
 
+float IngameScene::Util::bySameRatio(float aStart, float a, float aEnd, float bStart, float bEnd)
+{
+	if (aStart > a || aEnd < a) return 0.f;
+	if (aStart > aEnd || bStart > bEnd) return 0.f;
+
+	auto aRatio = (a - aStart) / (aEnd - aStart);
+	return bStart + (bEnd - bStart) * aRatio;
+}
+
+IngameScene::Util::Util()
+{
+}
+
+IngameScene::Util::~Util()
+{
+}

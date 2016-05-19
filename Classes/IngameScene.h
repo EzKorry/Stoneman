@@ -39,13 +39,34 @@ namespace arphomod {
 	class DebugBox;
 }
 class IngameScene : public cocos2d::Scene {
+private:
+	class Util {
+	public:
+
+		// number to string
+		template<typename T>
+		std::string toString(T Number)
+		{
+			std::ostringstream ss;
+			ss << Number;
+			return ss.str();
+		}
+		
+		// return b as a's positioning.
+		// ex) aStart~aEnd : 0~10, bStart~bEnd:0~100, if a==7.5 then return 75.
+		float bySameRatio(float aStart, float a, float aEnd, float bStart, float bEnd);
+
+		Util();
+		~Util();
+	};
 public:
 	IngameScene();
 	virtual ~IngameScene();
 	CREATE_FUNC(IngameScene);
 	bool init() override;
+	
 
-
+	Util util{};
 	void draw(Renderer *renderer, const Mat4& transform, uint32_t transformUpdated) override;
 	// per frame.
 	void update(float delta) override;
@@ -79,6 +100,7 @@ private:
 	void animationTest();
 	void gameInterface();
 	void initializePhysics();
+	void initializeEffectManager();
 
 	// character dashes.
 	void doDash();
@@ -156,6 +178,8 @@ private:
 	int _keyCount = 0;
 
 	cocos2d::Node* _box2dWorld { nullptr };
+
+	
 };
 
 #endif /* INGAMESCENE_H_ */

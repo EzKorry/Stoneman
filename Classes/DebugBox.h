@@ -21,8 +21,10 @@ namespace arphomod {
 **********************************************************/
 class DebugBox : public cocos2d::Node
 {
-public:
+private:
 	class Push;
+public:
+	
 	
 	CREATE_FUNC(DebugBox);
 	static Push push;
