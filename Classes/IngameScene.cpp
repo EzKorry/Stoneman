@@ -16,9 +16,13 @@
 #include "AppDelegate.h"
 #include "STWallBuilder.h"
 #include "apAsyncTaskManager.h"
+#include "DebugBox.h"
+#include <sstream>
 #include <future>
+#include <json.hpp>
 
 USING_NS_CC;
+using json = nlohmann::json;
 using namespace arphomod;
 float IngameScene::_timeScale = 1.0f;
 std::shared_ptr<b2World> IngameScene::world = nullptr;
@@ -29,8 +33,45 @@ bool IngameScene::init() {
 
 	if(!Scene::init()) return false;
 
-	//
+	//set unique scene pointer.
 	_uniqueScene = this;
+
+	//prepareThings();
+	//go();
+
+	//debugbox test
+	auto visibleSize = Director::getInstance()->getVisibleSize();
+	_debugBox = DebugBox::create();
+	addChild(_debugBox, 999);
+	_debugBox->setAnchorPoint(Vec2::ZERO);
+	_debugBox->setPosition(Vec2(visibleSize.width,0.f));
+	_debugBox->get() << "abce" << 123 << 1.234 << DebugBox::push;
+	
+
+
+	//json Test
+	/*json j;
+	j.push_back("foo");
+	j.push_back(1);
+	j.push_back(true);
+
+	stringstream ss;
+	// iterate the array
+	for (json::iterator it = j.begin(); it != j.end(); ++it) {
+		ss << *it << '\n';
+		cocos2d::log("%s", ss.str().c_str());
+		ss.clear();
+	}
+
+	// range-based for
+	for (auto& element : j) {
+		ss << element << '\n';
+		cocos2d::log("%s", ss.str().c_str());
+		ss.clear();
+	}
+	*/
+	auto writablePath = FileUtils::getInstance()->getWritablePath();
+	cocos2d::log("%s", writablePath.c_str());
 
 	// custom Scheduler initializing.
 	_localScheduler = new (std::nothrow) Scheduler();
@@ -43,8 +84,6 @@ bool IngameScene::init() {
 	_boxHeight = 48.f;
 
 	//camera and master field initialize
-
-	auto visibleSize = Director::getInstance()->getVisibleSize();
 	_camera = STCamera::create();
 	auto touchManager = APTouchManager::getInstance();
 	_masterField = Node::create();
@@ -57,104 +96,69 @@ bool IngameScene::init() {
 	this->addChild(_masterField, 0, "masterField");
 	_masterField->addChild(_box2dWorld, 0, "box2dWorld");
 
-	auto gravity = b2Vec2(0.0f, -40.0f);
-	world = std::make_shared<b2World>(gravity);
-
-	//_masterField->setScale(3.0f);
-
-
-
-
-	// debugDraw setting
-	//_debugDraw = new GLESDebugDraw(SCALE_RATIO);
-
-	_debugDraw = std::make_shared<GLESDebugDraw>(SCALE_RATIO);
-	world->SetDebugDraw(_debugDraw.get());
-	uint32 flags = 0;
-	flags += b2Draw::e_shapeBit;
-	_debugDraw->SetFlags(flags);
-
-
-
-	//ADD WALL
-
-	_wallBuilder = STWallBuilder::create();
-	_masterField->addChild(_wallBuilder, 10, "wallBuilder");
-	//fut = std::async(std::launch::async, [this]() {
-	_wallBuilder->makeWall(-20, -20, 40, 40);
-	_wallBuilder->makeWall(20, 0, 7, 10);
-//	});
-	/*
-	auto repeatSprite = Sprite::create("tile1.png");
-	repeatSprite->setPosition(300.f, 300.f);
-	_masterField->addChild(repeatSprite);
-	Texture2D::TexParams t;
-	t.magFilter = GL_LINEAR;
-	t.minFilter = GL_LINEAR;
-	t.wrapS = GL_REPEAT;
-	t.wrapT = GL_REPEAT;
-	repeatSprite->getTexture()->setTexParameters(t);
-	repeatSprite->setTextureRect(Rect(0, 0, 800, 800));
-	*/
-	//_wallBuilder->makeWall(0, 19, 20, 1);
-	//_wallBuilder->makeWall(20, 0, 1, 20);
-
-
-
-	addWall((visibleSize.width / 2), 50, visibleSize.width, 10); //CEIL
-	addWall(0, (visibleSize.height / 2), 10, visibleSize.height); //LEFT
-	addWall(visibleSize.width, (visibleSize.height / 2), 10,
-			visibleSize.height); //RIGHT
-
-	// CHARACTER BOX2D PHYSICS!
-	_sp = Sprite::create("character.png");
-	_sp->setScaleX(_boxWidth / _sp->getContentSize().width);
-	_sp->setScaleY(_boxHeight / _sp->getContentSize().height);
-	_masterField->addChild(_sp);
-
-	b2PolygonShape charShape;
-	// box2d의 setbox는 가로세로가 아니라 반지름이랑 개념이 비슷하다. 가운데에서부터 한변 까지의 길이임. 그래서 /2를 해줌.
-	charShape.SetAsBox(_boxWidth / SCALE_RATIO  / 2,_boxHeight / SCALE_RATIO / 2);
 	
-	b2FixtureDef charFixtureDef;
-	charFixtureDef.density = _boxDensity * (20.f * 32.f) / (_boxWidth * _boxHeight);
-	charFixtureDef.friction = 0;
-	charFixtureDef.restitution = 0;
-	charFixtureDef.shape = &charShape;
-	charFixtureDef.filter.categoryBits = CHARACTER;
-	charFixtureDef.filter.maskBits = CHARACTER || BOSS || WALL;
+	// font test
+	TTFConfig conf("fonts/SpoqaHsRegular.ttf", 24);
+	auto label = STLabel::createWithTTF(conf, "sssssssssssssssssssss");
+	_masterField->addChild(label, 30);
+	label->setPosition(100, 200);
 
-	b2BodyDef charBodyDef;
-	charBodyDef.position.Set((visibleSize.width / 2) / SCALE_RATIO, (visibleSize.height / 2)/SCALE_RATIO);
-	charBodyDef.userData = _sp;
-	charBodyDef.fixedRotation = true;
-	charBodyDef.type = b2BodyType::b2_dynamicBody;
-
-	_charBody = world->CreateBody(&charBodyDef);
-	_charBody->CreateFixture(&charFixtureDef);
+	//---------------------
+	// effect manager
+	//---------------------
+	_effectGen = STEffectGenerator::create();
+	_masterField->addChild(_effectGen);
 
 
-	// set nowFieldText Position
-	_nowTextPos = Vec2(50.0f, visibleSize.height - 15.0f);
+	/// effect setting!!///
+	_effectConf.count = 10;
+	_effectConf.minPower = 0.5f; // 0.5
+	_effectConf.maxPower = 2.5f; // 2.5
+	_effectConf.minSize = 1.f;
+	_effectConf.maxSize = 7.f;
+	_effectConf.minGravityScale = 0.8f; // 0.8
+	_effectConf.maxGravityScale = 0.8f; // 0.8
+	_effectConf.minDuration = 3.f;
+	_effectConf.maxDuration = 5.f;
+	_effectConf.restitution = 0.4f;
+	_effectConf.friction = 0.2f; // 0.2
+	_effectConf.diffuseX = 40.f;
+	_effectConf.diffuseY = 0.f;
+	_effectConf.color = cocos2d::Color3B(107, 88, 71);
+	_effectConf.minAlpha = 200.f;
+	_effectConf.maxAlpha = 200.f;
+	_effectConf.colorBrightnessRange = 30;
+	_effectConf.fixedRotation = false;
+	_effectConf.type = STEffectType::Boom;
 
+	initializePhysics();
+	debugVariable();
+	gameInterface();
+	animationTest();
+	scheduleUpdate();
 
-	
+	return true;
+}
 
+void IngameScene::debugVariable() {
 	//-----------------------------------------
 	// add variable settings editbox
 	//------------------------------------------
+	// set nowFieldText Position
+	auto visibleSize = Director::getInstance()->getVisibleSize();
+	_nowTextPos = Vec2(50.0f, visibleSize.height - 15.0f);
 
 	/*addTextField([this](cocos2d::ui::EditBox* editbox)->void {
-		this->setJumpPower(std::atof(editbox->getText()));
+	this->setJumpPower(std::atof(editbox->getText()));
 	}, "jumpPower");
 
 	addTextField([this](EditBox* editbox)->void {
-		world->SetGravity(b2Vec2(0, std::atof(editbox->getText())));
+	world->SetGravity(b2Vec2(0, std::atof(editbox->getText())));
 	}, "gravity");
 
 	addTextField([this](EditBox* editbox)->void {
-		_airResistance = std::atof(editbox->getText());
-		_originAirResistance = _airResistance;
+	_airResistance = std::atof(editbox->getText());
+	_originAirResistance = _airResistance;
 	}, "airResistance");
 	*/
 	addTextField([this](EditBox * editbox)->void {
@@ -171,18 +175,18 @@ bool IngameScene::init() {
 		replaceBox();
 	}, "boxHeight");
 	/*addTextField([this](EditBox * editbox)->void {
-		_boxDensity = std::atof(editbox->getText());
-		replaceBox();
+	_boxDensity = std::atof(editbox->getText());
+	replaceBox();
 	}, "boxDensity");
 	addTextField([this](EditBox * editbox)->void {
-		for(auto& item:_walls) {
-			for (b2Fixture* f = item->GetFixtureList(); f; f = f->GetNext()) {
-				f->SetFriction(std::atof(editbox->getText()));
-			}
-		}
+	for(auto& item:_walls) {
+	for (b2Fixture* f = item->GetFixtureList(); f; f = f->GetNext()) {
+	f->SetFriction(std::atof(editbox->getText()));
+	}
+	}
 	}, "wallFriction");
 	addTextField([this](EditBox * editbox)->void {
-		_cameraMoveSpeed = std::atof(editbox->getText());
+	_cameraMoveSpeed = std::atof(editbox->getText());
 	}, "cameraSpeed");*/
 	addTextField([this](EditBox * editbox)->void {
 		_dashPower = std::atof(editbox->getText());
@@ -244,27 +248,49 @@ bool IngameScene::init() {
 	addTextField([this](EditBox * editbox)->void {
 		_velocityIterations = std::atoi(editbox->getText());
 	}, "_velocityIterations");
+}
+void IngameScene::animationTest()
+{
+	auto getAnimation = [](const char *format, int start, int end) -> cocos2d::Vector<SpriteFrame*>
+	{
+		auto spritecache = SpriteFrameCache::getInstance();
+		Vector<SpriteFrame*> animFrames;
+		char str[100];
+		for (int i = start; i <= end; i++)
+		{
+			sprintf(str, format, i);
+			animFrames.pushBack(spritecache->getSpriteFrameByName(str));
+		}
+		return animFrames;
+	};
+	auto spritecache = SpriteFrameCache::getInstance();
+	spritecache->addSpriteFramesWithFile("char.plist");
+	auto frames = getAnimation("char%04d", 0, 15);
+	auto animation = Animation::createWithSpriteFrames(frames, 1 / 15.f, 1);
+	auto charanimationspr = Sprite::createWithSpriteFrame(frames.front());
+	_masterField->addChild(charanimationspr);
+	charanimationspr->setPosition(100, 100);
+	charanimationspr->runAction(RepeatForever::create(Animate::create(animation)));
 
-	
-	log("%d",Device::getDPI());
+
+	spritecache->addSpriteFramesWithFile("charThree.plist");
+	auto frames2 = getAnimation("charThree%04d", 0, 15);
+	auto animation2 = Animation::createWithSpriteFrames(frames2, 1 / 15.f, 1);
+	auto charanimationspr2 = Sprite::createWithSpriteFrame(frames2.front());
+	_masterField->addChild(charanimationspr2);
+	charanimationspr2->setPosition(200, 100);
+	charanimationspr2->setScale(_boxWidth / charanimationspr2->getContentSize().width);
+	charanimationspr2->runAction(RepeatForever::create(Animate::create(animation2)));
 
 
+}
+void IngameScene::gameInterface()
+{
 
 
-
-
-
-//	auto editBoxCallback = [this](cocos2d::ui::EditBox* editbox)->void {
-//		auto str = std::string(editbox->getText());
-//		//this->setJumpPower(std::stof(str));
-//		this->setJumpPower(std::atof(editbox->getText()));
-//	};
-//	auto editBox = STTextField::create(editBoxCallback, Size(100.0f,50.0f), "값");
-//	_camera->addChild(editBox);
-//	editBox->setPosition(visibleSize.width/2, visibleSize.height - 20);
-
-
-	auto buttonSize = Size(150.f,150.f);
+	auto buttonSize = Size(150.f, 150.f);
+	auto touchManager = APTouchManager::getInstance();
+	auto visibleSize = Director::getInstance()->getVisibleSize();
 	//---------------
 	//	 move left button
 	//---------------
@@ -273,9 +299,9 @@ bool IngameScene::init() {
 	leftButton->setPosition(leftButtonSize.width / 2, leftButtonSize.height / 2);
 	_camera->addChild(leftButton, 1, "leftButton");
 	touchManager->registerNode(leftButton,
-			APTouchManager::createCheckerWithRect(leftButton,
-					Rect(-buttonSize.width / 2, -buttonSize.height / 2,
-							buttonSize.width, buttonSize.height)));
+		APTouchManager::createCheckerWithRect(leftButton,
+			Rect(-buttonSize.width / 2, -buttonSize.height / 2,
+				buttonSize.width, buttonSize.height)));
 	touchManager->setOrder(leftButton, 10);
 	auto leftOn = [this]()->void {
 		endDash();
@@ -292,17 +318,17 @@ bool IngameScene::init() {
 		_checkMoveButton = false;
 	};
 	touchManager->addBehavior(leftButton, APTouchType::Began, leftOn,
-			"leftDown", "leftDown_b");
+		"leftDown", "leftDown_b");
 	touchManager->addBehavior(leftButton, APTouchType::MovedInner, leftOn,
-			"leftMovedInner", "leftDown_b");
+		"leftMovedInner", "leftDown_b");
 	touchManager->addBehavior(leftButton, APTouchType::MovedInnerIgnoreBegan,
-			leftOn, "leftDownIgnoreBegan", "leftDown_b");
+		leftOn, "leftDownIgnoreBegan", "leftDown_b");
 	touchManager->addBehavior(leftButton, APTouchType::EndedIn, cancelMove,
-			"leftEndedIn", "leftDown_b");
+		"leftEndedIn", "leftDown_b");
 	touchManager->addBehavior(leftButton, APTouchType::EndedInIgnoreBegan, cancelMove,
-			"leftEndedInIgnoreBegan", "leftDown_b");
+		"leftEndedInIgnoreBegan", "leftDown_b");
 	touchManager->addBehavior(leftButton, APTouchType::EndedOut, cancelMove,
-			"leftEndedOut", "leftDown_b");
+		"leftEndedOut", "leftDown_b");
 
 	//---------------
 	// move right button
@@ -312,26 +338,26 @@ bool IngameScene::init() {
 	rightButton->setPosition(rightButtonSize.width * 1.5f, rightButtonSize.height / 2);
 	_camera->addChild(rightButton, 1, "rightButton");
 	touchManager->registerNode(rightButton,
-			APTouchManager::createCheckerWithRect(rightButton,
-					Rect(-buttonSize.width / 2, -buttonSize.height / 2,
-							buttonSize.width, buttonSize.height)));
+		APTouchManager::createCheckerWithRect(rightButton,
+			Rect(-buttonSize.width / 2, -buttonSize.height / 2,
+				buttonSize.width, buttonSize.height)));
 	touchManager->setOrder(rightButton, 10);
 	touchManager->addBehavior(rightButton, APTouchType::Began, rightOn,
-			"rightDown", "rightDown_b");
+		"rightDown", "rightDown_b");
 	touchManager->addBehavior(rightButton, APTouchType::MovedInner, rightOn,
-			"rightMovedInner", "rightDown_b");
+		"rightMovedInner", "rightDown_b");
 	touchManager->addBehavior(rightButton, APTouchType::MovedInnerIgnoreBegan,
-			rightOn, "rightDownIgnoreBegan", "rightDown_b");
+		rightOn, "rightDownIgnoreBegan", "rightDown_b");
 	touchManager->addBehavior(rightButton, APTouchType::EndedIn, cancelMove,
-			"rightEndedIn", "rightDown_b");
+		"rightEndedIn", "rightDown_b");
 	touchManager->addBehavior(rightButton, APTouchType::EndedInIgnoreBegan, cancelMove,
-			"rightEndedInIgnoreBegan", "rightDown_b");
+		"rightEndedInIgnoreBegan", "rightDown_b");
 	touchManager->addBehavior(rightButton, APTouchType::EndedOut, cancelMove,
-			"rightEndedOut", "rightDown_b");
-//	touchManager->addBehavior(rightButton, APTouchType::MovedOuter, cancelMove,
-//			"rightMovedOuter", "rightDown_b");
-//	touchManager->addBehavior(rightButton, APTouchType::MovedOuterIgnoreBegan,
-//			cancelMove, "rightMovedOuterIgnoreBegan", "rightDown_b");
+		"rightEndedOut", "rightDown_b");
+	//	touchManager->addBehavior(rightButton, APTouchType::MovedOuter, cancelMove,
+	//			"rightMovedOuter", "rightDown_b");
+	//	touchManager->addBehavior(rightButton, APTouchType::MovedOuterIgnoreBegan,
+	//			cancelMove, "rightMovedOuterIgnoreBegan", "rightDown_b");
 
 
 	//---------------------
@@ -342,19 +368,19 @@ bool IngameScene::init() {
 	upButton->setPosition(visibleSize.width - upButtonSize.width / 2, upButtonSize.height / 2);
 	_camera->addChild(upButton, 1, "upButton");
 	touchManager->registerNode(upButton,
-			APTouchManager::createCheckerWithRect(upButton,
-					Rect(-buttonSize.width / 2, -buttonSize.height / 2,
-							buttonSize.width, buttonSize.height)));
+		APTouchManager::createCheckerWithRect(upButton,
+			Rect(-buttonSize.width / 2, -buttonSize.height / 2,
+				buttonSize.width, buttonSize.height)));
 	touchManager->setOrder(upButton, 10);
-	touchManager->addBehavior(upButton, APTouchType::Began, [this]()->void{
+	touchManager->addBehavior(upButton, APTouchType::Began, [this]()->void {
 		jumpClicked();
-	},"upDown","upDownYeah");
-	touchManager->addBehavior(upButton, APTouchType::EndedIn, [this]()->void{
+	}, "upDown", "upDownYeah");
+	touchManager->addBehavior(upButton, APTouchType::EndedIn, [this]()->void {
 		jumpTouchEnd();
-	},"upEndedIn","upDownYeah");
-	touchManager->addBehavior(upButton, APTouchType::EndedOut, [this]()->void{
+	}, "upEndedIn", "upDownYeah");
+	touchManager->addBehavior(upButton, APTouchType::EndedOut, [this]()->void {
 		jumpTouchEnd();
-	},"upEndedOut","upDownYeah");
+	}, "upEndedOut", "upDownYeah");
 
 	//---------------------
 	// dash button
@@ -364,96 +390,21 @@ bool IngameScene::init() {
 	skillButton->setPosition(visibleSize.width - skillButtonSize.width *1.5f, skillButtonSize.height / 2);
 	_camera->addChild(skillButton, 1, "skillButton");
 	touchManager->registerNode(skillButton,
-			APTouchManager::createCheckerWithRect(skillButton,
-					Rect(-buttonSize.width / 2, -buttonSize.height / 2,
-							buttonSize.width, buttonSize.height)));
+		APTouchManager::createCheckerWithRect(skillButton,
+			Rect(-buttonSize.width / 2, -buttonSize.height / 2,
+				buttonSize.width, buttonSize.height)));
 	touchManager->setOrder(skillButton, 10);
-	touchManager->addBehavior(skillButton, APTouchType::Began, [this](){
+	touchManager->addBehavior(skillButton, APTouchType::Began, [this]() {
 		doDash();
-	},"skillDown", "skillDown_b");
+	}, "skillDown", "skillDown_b");
 
-	// origin Air resistance setting.
-	_originAirResistance = _airResistance;
-
-	// background
-	auto drawBack = DrawNode::create();
-	drawBack->drawSolidRect(Vec2::ZERO, Vec2(visibleSize.width, visibleSize.height), Color4F(Color4B(84, 65, 52, 1)));
-	this->addChild(drawBack, 0, "drawBack");
-
-	//----------------------------------
-	// Character ContactListener
-	//----------------------------------
-	_cl_p = std::make_shared<STContactListener>(this);
-	world->SetContactListener(_cl_p.get());
-
-
-	_cl_p->setBeginContact(_charBody, [this](b2Contact* contact, b2Fixture* other) {
-		b2WorldManifold worldManifold;
-		contact->GetWorldManifold(&worldManifold);
-		cocos2d::log("normalX:%.2f, normalY:%.2f", worldManifold.normal.x,
-								worldManifold.normal.y);
-
-	});
-
-	_cl_p->setPostSolve(_charBody,
-			[this](b2Contact* contact, const b2ContactImpulse* impulse, b2Fixture* other) {
-
-		b2WorldManifold worldManifold;
-		contact->GetWorldManifold(&worldManifold);
-
-		_hitPower = impulse->normalImpulses[0];
-		// if hit Ground!
-		if((	impulse->normalImpulses[0] >= 0.05f ||
-				impulse->normalImpulses[1] >= 0.05f) &&
-				worldManifold.normal.y == 1.0f &&
-				worldManifold.normal.x == 0.0f) {
-
-			cocos2d::log("nX:%.2f, nY:%.2f, inp0:%.2f, inp1:%.2f, itp0:%.2f, itp1:%.2f",
-					worldManifold.normal.x,
-					worldManifold.normal.y,
-					impulse->normalImpulses[0],
-					impulse->normalImpulses[1],
-					impulse->tangentImpulses[0],
-					impulse->tangentImpulses[1]);
-
-			// power max : 0.2f
-			float power = impulse->normalImpulses[0];
-			if (power >= 0.2f) {
-				power = 0.2f;
-			}
-			//_characterHitGroundYes = true;
-			characterHitGround(power);
-			
-
-			
-		}
-		// hit walls if character is moving left
-		else if ((impulse->normalImpulses[0] >= 0.01f ||
-			impulse->normalImpulses[1] >= 0.01f) &&
-			worldManifold.normal.y == 0.0f &&
-			worldManifold.normal.x == 1.0f) {
-			characterHitLeftWall(impulse->normalImpulses[0]);
-			//_characterHitLeftWallYes = true;
-		}
-
-		// hit walls if character is moving right
-		else if ((impulse->normalImpulses[0] >= 0.01f ||
-			impulse->normalImpulses[1] >= 0.01f) &&
-			worldManifold.normal.y == 0.0f &&
-			worldManifold.normal.x == -1.0f) {
-
-			characterHitRightWall(impulse->normalImpulses[0]);
-			//_characterHitRightWallYes = true;
-		}
-
-	});
 
 	//=---------------------
 	// Keyboard input
 	//----------------------
 	auto keyboardListener = EventListenerKeyboard::create();
 	keyboardListener->onKeyPressed = [this, leftOn, rightOn](EventKeyboard::KeyCode keyCode, Event* event) {
-		
+
 		using K = EventKeyboard::KeyCode;
 		switch (keyCode) {
 		case K::KEY_A:
@@ -473,7 +424,7 @@ bool IngameScene::init() {
 			break;
 		default:
 			break;
-			
+
 		}
 		//cocos2d::log("Key with keycode %d pressed", keyCode);
 	};
@@ -508,83 +459,137 @@ bool IngameScene::init() {
 	};
 	_eventDispatcher->addEventListenerWithSceneGraphPriority(keyboardListener, this);
 
-	//---------------------
-	// effect manager
-	//---------------------
-	_effectGen = STEffectGenerator::create();
-	_masterField->addChild(_effectGen);
+	// background
+	auto drawBack = DrawNode::create();
+	drawBack->drawSolidRect(Vec2::ZERO, Vec2(visibleSize.width, visibleSize.height), Color4F(Color4B(84, 65, 52, 1)));
+	this->addChild(drawBack, 0, "drawBack");
 
-
-	/// effect setting!!///
-
-	_effectConf.count = 10;
-	_effectConf.minPower = 0.5f; // 0.5
-	_effectConf.maxPower = 2.5f; // 2.5
-	_effectConf.minSize = 1.f;
-	_effectConf.maxSize = 7.f;
-	_effectConf.minGravityScale = 0.8f; // 0.8
-	_effectConf.maxGravityScale = 0.8f; // 0.8
-	_effectConf.minDuration = 3.f;
-	_effectConf.maxDuration = 5.f;
-	_effectConf.restitution = 0.4f;
-	_effectConf.friction = 0.2f; // 0.2
-	_effectConf.diffuseX = 40.f;
-	_effectConf.diffuseY = 0.f;
-	_effectConf.color = cocos2d::Color3B(107, 88, 71);
-	_effectConf.minAlpha = 200.f;
-	_effectConf.maxAlpha = 200.f;
-	_effectConf.colorBrightnessRange = 30;
-	_effectConf.fixedRotation = false;
-	_effectConf.type = STEffectType::Boom;
-
-
-	// sprite sheet animation
-	// load the Sprite Sheet
-	auto getAnimation = [](const char *format, int start, int end) -> cocos2d::Vector<SpriteFrame*>
-	{
-		auto spritecache = SpriteFrameCache::getInstance();
-		Vector<SpriteFrame*> animFrames;
-		char str[100];
-		for (int i = start; i <= end; i++)
-		{
-			sprintf(str, format, i);
-			animFrames.pushBack(spritecache->getSpriteFrameByName(str));
-		}
-		return animFrames;
-	};
-	auto spritecache = SpriteFrameCache::getInstance();
-	spritecache->addSpriteFramesWithFile("char.plist");
-	auto frames = getAnimation("char%04d", 0, 15);
-	auto animation = Animation::createWithSpriteFrames(frames, 1/15.f, 1);
-	auto charanimationspr = Sprite::createWithSpriteFrame(frames.front());
-	_masterField->addChild(charanimationspr);
-	charanimationspr->setPosition(100, 100);
-	charanimationspr->runAction(RepeatForever::create(Animate::create(animation)));
-
-	
-	spritecache->addSpriteFramesWithFile("charThree.plist");
-	auto frames2 = getAnimation("charThree%04d", 0, 15);
-	auto animation2 = Animation::createWithSpriteFrames(frames2, 1 / 15.f, 1);
-	auto charanimationspr2 = Sprite::createWithSpriteFrame(frames2.front());
-	_masterField->addChild(charanimationspr2);
-	charanimationspr2->setPosition(200, 100);
-	charanimationspr2->setScale(_boxWidth / charanimationspr2->getContentSize().width);
-	charanimationspr2->runAction(RepeatForever::create(Animate::create(animation2)));
-
-	// font test
-	TTFConfig conf ("fonts/SpoqaHsRegular.ttf", 24);
-	auto label = STLabel::createWithTTF(conf, "sssssssssssssssssssss");
-	_masterField->addChild(label);
-	label->setPosition(100, 200);
-	
-	cocos2d::log("fontSize: %d, scale: %f, designResolutionRatio: %f", label->getTTFConfig().fontSize, label->getScale(), AppDelegate::resolutionRatio);
-
-	// schedule update.
-	scheduleUpdate();
-
-	return true;
 }
+void IngameScene::initializePhysics()
+{
+	auto visibleSize = Director::getInstance()->getVisibleSize();
+	auto gravity = b2Vec2(0.0f, -40.0f);
+	world = std::make_shared<b2World>(gravity);
 
+	_debugDraw = std::make_shared<GLESDebugDraw>(SCALE_RATIO);
+	world->SetDebugDraw(_debugDraw.get());
+	uint32 flags = 0;
+	flags += b2Draw::e_shapeBit;
+	_debugDraw->SetFlags(flags);
+
+
+
+	//ADD WALL
+
+	_wallBuilder = STWallBuilder::create();
+	_masterField->addChild(_wallBuilder, 10, "wallBuilder");
+	_wallBuilder->makeWall(-20, -20, 40, 40);
+	_wallBuilder->makeWall(20, 0, 7, 10);
+
+
+	addWall((visibleSize.width / 2), 50, visibleSize.width, 10); //CEIL
+	addWall(0, (visibleSize.height / 2), 10, visibleSize.height); //LEFT
+	addWall(visibleSize.width, (visibleSize.height / 2), 10,
+		visibleSize.height); //RIGHT
+
+							 // CHARACTER BOX2D PHYSICS!
+	_sp = Sprite::create("character.png");
+	_sp->setScaleX(_boxWidth / _sp->getContentSize().width);
+	_sp->setScaleY(_boxHeight / _sp->getContentSize().height);
+	_masterField->addChild(_sp);
+
+	b2PolygonShape charShape;
+	// box2d의 setbox는 가로세로가 아니라 반지름이랑 개념이 비슷하다. 가운데에서부터 한변 까지의 길이임. 그래서 /2를 해줌.
+	charShape.SetAsBox(_boxWidth / SCALE_RATIO / 2, _boxHeight / SCALE_RATIO / 2);
+
+	b2FixtureDef charFixtureDef;
+	charFixtureDef.density = _boxDensity * (20.f * 32.f) / (_boxWidth * _boxHeight);
+	charFixtureDef.friction = 0;
+	charFixtureDef.restitution = 0;
+	charFixtureDef.shape = &charShape;
+	charFixtureDef.filter.categoryBits = CHARACTER;
+	charFixtureDef.filter.maskBits = CHARACTER || BOSS || WALL;
+
+	b2BodyDef charBodyDef;
+	charBodyDef.position.Set((visibleSize.width / 2) / SCALE_RATIO, (visibleSize.height / 2) / SCALE_RATIO);
+	charBodyDef.userData = _sp;
+	charBodyDef.fixedRotation = true;
+	charBodyDef.type = b2BodyType::b2_dynamicBody;
+
+	_charBody = world->CreateBody(&charBodyDef);
+	_charBody->CreateFixture(&charFixtureDef);
+
+	// origin Air resistance setting.
+	_originAirResistance = _airResistance;
+
+
+	//----------------------------------
+	// Character ContactListener
+	//----------------------------------
+	_cl_p = std::make_shared<STContactListener>(this);
+	world->SetContactListener(_cl_p.get());
+
+
+	_cl_p->setBeginContact(_charBody, [this](b2Contact* contact, b2Fixture* other) {
+		b2WorldManifold worldManifold;
+		contact->GetWorldManifold(&worldManifold);
+		cocos2d::log("normalX:%.2f, normalY:%.2f", worldManifold.normal.x,
+			worldManifold.normal.y);
+
+	});
+
+	_cl_p->setPostSolve(_charBody,
+		[this](b2Contact* contact, const b2ContactImpulse* impulse, b2Fixture* other) {
+
+		b2WorldManifold worldManifold;
+		contact->GetWorldManifold(&worldManifold);
+
+		_hitPower = impulse->normalImpulses[0];
+		// if hit Ground!
+		if (impulse->normalImpulses[0] >= 0.05f &&
+			worldManifold.normal.y == 1.0f &&
+			worldManifold.normal.x == 0.0f) {
+
+			cocos2d::log("nX:%.2f, nY:%.2f, inp0:%.2f, inp1:%.2f, itp0:%.2f, itp1:%.2f",
+				worldManifold.normal.x,
+				worldManifold.normal.y,
+				impulse->normalImpulses[0],
+				impulse->normalImpulses[1], // useless. -107374176.00
+				impulse->tangentImpulses[0], // useless. -0.00
+				impulse->tangentImpulses[1]); // useless. -107374176.00
+
+											  // power max : 0.2f
+			float power = impulse->normalImpulses[0];
+			if (power >= 0.2f) {
+				power = 0.2f;
+			}
+			//_characterHitGroundYes = true;
+			characterHitGround(power);
+
+
+
+		}
+		// hit walls if character is moving left
+		else if ((impulse->normalImpulses[0] >= 0.01f ||
+			impulse->normalImpulses[1] >= 0.01f) &&
+			worldManifold.normal.y == 0.0f &&
+			worldManifold.normal.x == 1.0f) {
+			characterHitLeftWall(impulse->normalImpulses[0]);
+			//_characterHitLeftWallYes = true;
+		}
+
+		// hit walls if character is moving right
+		else if ((impulse->normalImpulses[0] >= 0.01f ||
+			impulse->normalImpulses[1] >= 0.01f) &&
+			worldManifold.normal.y == 0.0f &&
+			worldManifold.normal.x == -1.0f) {
+
+			characterHitRightWall(impulse->normalImpulses[0]);
+			//_characterHitRightWallYes = true;
+		}
+
+	});
+}
 void IngameScene::jumpClicked() {
 	
 	// jump must exist only 1 until hit the ground.
@@ -775,7 +780,7 @@ void IngameScene::update(float delta) {
 
 	// Generate Effect
 	if (_haveToGenerateEffect) {
-		_effectGen->generateEffect(_effectConf, _sp->getPosition().x, _sp->getPosition().y - _boxHeight / 2);
+		
 		_haveToGenerateEffect = false;
 	}
 
@@ -829,7 +834,7 @@ void IngameScene::update(float delta) {
 
 	// do tasks within forced time
 	apAsyncTaskManager::getInstance()->doTasks();
-	cocos2d::log("updated!!!!@@!@%f", delta);
+	//cocos2d::log("updated!!!!@@!@%f", delta);
 
 
 }
@@ -842,7 +847,13 @@ void IngameScene::characterHitGround(float power) {
 
 	_jumpCount = 0;
 	_haveToGenerateEffect = true;
-
+	cocos2d::log("hit the ground power is %f", power);
+	boost::coroutines::symmetric_coroutine<void>::call_type gogo(
+		[this](boost::coroutines::symmetric_coroutine<void>::yield_type& yield) {
+		_effectGen->generateEffect(_effectConf, _sp->getPosition().x, _sp->getPosition().y - _boxHeight / 2);
+	});
+	apAsyncTaskManager::getInstance()->addTask(std::move(gogo));
+	
 	// Sound Test
 	auto ae = CocosDenshion::SimpleAudioEngine::getInstance();
 	//ae->preloadEffect("sounds/stone2.ogg");

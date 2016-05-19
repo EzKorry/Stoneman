@@ -6,6 +6,7 @@
 /proj.ios_mac/
 /proj.android-studio/
 /proj.android/
+cryptopp563/
 *.zip
 
 # Created by https://www.gitignore.io/api/android,java,c++

@@ -19,7 +19,7 @@
 
 USING_NS_CC;
 using namespace cocos2d::ui;
-
+using namespace arphomod;
 
 // character width:30px, height:48px.
 
@@ -35,6 +35,9 @@ enum EntityCategory {
 class STCamera;
 class GLESDebugDraw;
 class STWallBuilder;
+namespace arphomod {
+	class DebugBox;
+}
 class IngameScene : public cocos2d::Scene {
 public:
 	IngameScene();
@@ -70,6 +73,12 @@ public:
 private:
 
 	static IngameScene* _uniqueScene;
+
+	//when init, you should debug variable!
+	void debugVariable();
+	void animationTest();
+	void gameInterface();
+	void initializePhysics();
 
 	// character dashes.
 	void doDash();
@@ -113,6 +122,9 @@ private:
 	bool _characterHitLeftWallYes{ false };
 	bool _characterHitRightWallYes{ false };
 	float _hitPower;
+
+	//debugBox
+	DebugBox* _debugBox;
 
 	STEffectConfigure _effectConf;
 	STEffectGenerator* _effectGen;
