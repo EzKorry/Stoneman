@@ -96,7 +96,7 @@ hs_err_pid*
 # *.png
 # *.jpg
 # *.gif
-*.psd
+# *.psd
 # Created by https://www.gitignore.io/api/eclipse
 
 ### Eclipse ###
