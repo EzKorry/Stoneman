@@ -31,6 +31,11 @@ enum EntityCategory {
 	ENEMY_AIRCRAFT = 0x0010,
 };
 
+enum ScheduleUpdateFuncPriority {
+	P_WORLDSTEP = 1,
+	P_WALLCHECK = 3,
+	P_CAMERA = 5
+};
 
 class STCamera;
 class GLESDebugDraw;
@@ -59,6 +64,43 @@ private:
 		Util();
 		~Util();
 	};
+
+	// call functions based priority when main scene updating 
+	class UpdateCaller {
+	public:
+
+		void initWithScheduler(cocos2d::Scheduler* s, const std::string& key);
+
+		// lower number, higher priority.
+		// ex) 1:first, 10:last.
+		template<typename TFunc>
+		void addFunc(int priority, TFunc&& func){
+			if (_list.find(priority) != _list.end()) {
+				cocos2d::log("UpdateCaller - already exists!");
+				return;
+			}
+			
+			_list[priority] = std::forward<TFunc>(func);
+
+		}
+
+		template<typename TFunc>
+		void changeFunc(int priority, TFunc&& func) {
+			if (_list.find(priority) != _list.end()) {
+				_list[priority] = std::forward<TFunc>(func);
+				return;
+			}
+			cocos2d::log("UpdateCaller-changeFunc - key doesn't exist!");
+		}
+
+		void delFunc(int priority);
+		UpdateCaller();
+		~UpdateCaller();
+	private:
+		std::map<int, std::function<void(float)>> _list;
+	};
+
+
 public:
 	IngameScene();
 	virtual ~IngameScene();
@@ -95,7 +137,8 @@ private:
 
 	static IngameScene* _uniqueScene;
 
-	//when init, you should debug variable!
+	//when init, you should call debug variable!
+	void appInit();
 	void debugVariable();
 	void animationTest();
 	void gameInterface();
@@ -156,6 +199,8 @@ private:
 	Scheduler* _localScheduler{ nullptr };
 	ActionManager* _localActionManager{ nullptr };
 
+	// updater.
+	std::shared_ptr<UpdateCaller> _localUpdater, _globalUpdater;
 	
 	bool _checkJumpHighest{ false };
 	cocos2d::Vec2 _nowTextPos { Vec2(50.0f, 15.0f) };
@@ -173,7 +218,6 @@ private:
 	bool _checkMoveButton { false };
 	bool _isRight { false };
 	bool _haveToGenerateEffect{ false };
-	std::future<void> fut;
 	// used when keyboard testing
 	int _keyCount = 0;
 

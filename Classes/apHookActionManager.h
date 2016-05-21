@@ -25,33 +25,35 @@ public:
 
 	// add event hook.
 	template<class TString>
-	void addHook(TString&& hook) {
+	shared_ptr<apHookActionManager> addHook(TString&& hook) {
 
 		// if hook not found,
 		if(_actions.find(hook) == _actions.end()) {
 			_actions.emplace(std::forward<TString>(hook), apActionContainer{});
 		}
+		return _sp;
 	}
 
 	// add function to hook.
 	template<class TFunc>
-	void addAction(const std::string& hook, const std::string& tag, TFunc&& action) {
+	shared_ptr<apHookActionManager> addAction(const std::string& hook, const std::string& tag, TFunc&& action) {
 
 
 		addHook(hook);
 
 		// if tag not found, ignore.
 		_actions[hook].emplace(tag, std::forward<TFunc>(action));
+		return _sp;
 
 	}
 	// run hook. then all that function will be invoked.
-	void runHook(const std::string& hook);
+	shared_ptr<apHookActionManager> runHook(const std::string& hook);
 
 	// remove hook.
-	void removeHook(const std::string& hook);
+	shared_ptr<apHookActionManager> removeHook(const std::string& hook);
 
 	// remove Action.
-	void removeAction(const std::string& hook, const string& tag);
+	shared_ptr<apHookActionManager> removeAction(const std::string& hook, const string& tag);
 
 	// singleton.
 	static shared_ptr<apHookActionManager> getInstance() {

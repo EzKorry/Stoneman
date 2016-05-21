@@ -34,6 +34,18 @@ public:
 	DebugBox& operator<<(const std::string& arg);
 	DebugBox& operator<<(double arg);
 	DebugBox& operator<<(DebugBox::Push arg);
+
+	template <class T>
+	DebugBox& operator<<(T&& arg) {
+		_stream << std::forward<T>(arg);
+		return *this;
+	}
+
+	template <class T>
+	void imbue(T&& arg) {
+		_stream.imbue(std::forward<T>(arg));
+	}
+
 	void print();
 	DebugBox& get();
 

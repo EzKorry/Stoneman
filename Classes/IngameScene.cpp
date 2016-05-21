@@ -21,10 +21,12 @@
 #include <future>
 #include <json.hpp>
 #include <boost/locale.hpp>
+#include <fstream>
 
 USING_NS_CC;
 using json = nlohmann::json;
-using namespace arphomod;
+using namespace boost::locale;
+using namespace std;
 float IngameScene::_timeScale = 1.0f;
 std::shared_ptr<b2World> IngameScene::world = nullptr;
 const float IngameScene::OneBlockPx = 20.f;
@@ -34,6 +36,20 @@ bool IngameScene::init() {
 
 	if(!Scene::init()) return false;
 
+	
+	appInit();
+	initializeEffectManager();
+	initializePhysics();
+	debugVariable();
+	gameInterface();
+	animationTest();
+	scheduleUpdate();
+
+	return true;
+}
+
+void IngameScene::appInit()
+{
 	//set unique scene pointer.
 	_uniqueScene = this;
 
@@ -45,9 +61,21 @@ bool IngameScene::init() {
 	_debugBox = DebugBox::create();
 	addChild(_debugBox, 999);
 	_debugBox->setAnchorPoint(Vec2::ZERO);
-	_debugBox->setPosition(Vec2(visibleSize.width,0.f));
+	_debugBox->setPosition(Vec2(visibleSize.width, 0.f));
 	_debugBox->get() << "abce" << 123 << 1.234 << DebugBox::push;
-	
+
+
+	auto actionManager = apHookActionManager::getInstance();
+	actionManager
+		->addHook("enter_logo")
+		->addHook("leave_logo")
+		->addHook("enter_stage_select")
+		->addHook("leave_stage_select")
+		->addHook("enter_stage")
+		->addHook("leave_stage");
+
+
+
 
 
 	//json Test
@@ -59,16 +87,16 @@ bool IngameScene::init() {
 	stringstream ss;
 	// iterate the array
 	for (json::iterator it = j.begin(); it != j.end(); ++it) {
-		ss << *it << '\n';
-		cocos2d::log("%s", ss.str().c_str());
-		ss.clear();
+	ss << *it << '\n';
+	cocos2d::log("%s", ss.str().c_str());
+	ss.clear();
 	}
 
 	// range-based for
 	for (auto& element : j) {
-		ss << element << '\n';
-		cocos2d::log("%s", ss.str().c_str());
-		ss.clear();
+	ss << element << '\n';
+	cocos2d::log("%s", ss.str().c_str());
+	ss.clear();
 	}
 	*/
 	auto fu = FileUtils::getInstance();
@@ -79,7 +107,36 @@ bool IngameScene::init() {
 		_debugBox->get() << item << DebugBox::push;
 	}
 
-		
+	generator gen;
+	// Specify location of dictionaries
+	gen.add_messages_path("./locale");
+	gen.add_messages_domain("hello");
+
+	// Generate locales and imbue them to iostream
+	std::locale::global(gen(""));
+	//locale::global(gen("ko_KR.UTF-8"));
+
+	float speed = 1.5f;
+	_debugBox->imbue(locale());
+
+	_debugBox->get() << translate("Hello World") << DebugBox::push
+		<< format(translate("You are so fast by speed {1}.")) % speed << DebugBox::push
+		<< format(translate("Ganda {1} and so {2} to {3}")) % speed % "ssss" % "ssssdd"
+		<< DebugBox::push;
+
+	// Display a message using current system locale
+	/*
+	wofstream outFile(writablePath + "output.txt");
+	outFile.imbue(locale());
+	outFile << translate(L"Hello World") << endl;
+
+	outFile << wformat(translate(L"You are so fast by speed {1}.")) % speed << endl;
+
+	std::wstring s = L"와우와웅";
+	outFile << wformat(translate(L"Ganda {1} and so {2} to {3}")) % speed % L"나비" % s << endl;
+	outFile.close();
+
+	*/
 
 
 	// custom Scheduler initializing.
@@ -87,6 +144,18 @@ bool IngameScene::init() {
 	// action manager
 	_localActionManager = new (std::nothrow) ActionManager();
 	_localScheduler->scheduleUpdate(_localActionManager, Scheduler::PRIORITY_SYSTEM, false);
+
+
+
+	// updateCaller initialize.
+	_localUpdater = make_shared<UpdateCaller>();
+	_globalUpdater = make_shared<UpdateCaller>();
+	_localUpdater->initWithScheduler(_localScheduler, "localUpdater");
+	_globalUpdater->initWithScheduler(getScheduler(), "globalScheduler");
+		boost::coroutines::symmetric_coroutine<void>::call_type updateCallFuncs(
+			[this](boost::coroutines::symmetric_coroutine<void>::yield_type& yield) {
+	});
+
 
 	// initialize member variables.
 	_boxWidth = 30.f;
@@ -105,25 +174,22 @@ bool IngameScene::init() {
 	this->addChild(_masterField, 0, "masterField");
 	_masterField->addChild(_box2dWorld, 0, "box2dWorld");
 
-	
+	_localUpdater->addFunc(P_CAMERA, [this](float delta) {
+		// camera update with vibration offset. 4
+		auto camPos = _camera->getCameraPosition();
+		//_camera->setVibrationOffset(_vibrationOffset);
+		_camera->setCameraPosition(camPos + (_sp->getPosition() - camPos) * _cameraMoveSpeed);
+		_camera->updateCamera(delta);
+	});
+
+
 	// font test
 	TTFConfig conf("fonts/SpoqaHsRegular.ttf", 24);
-	auto label = STLabel::createWithTTF(conf, "한글이될까");
+	auto label = STLabel::createWithTTF(conf, (format(translate("You are so fast by speed {1}.")) % 4.253).str());
 	_masterField->addChild(label, 30);
 	label->setPosition(100, 200);
 
-	
 
-
-
-	initializeEffectManager();
-	initializePhysics();
-	debugVariable();
-	gameInterface();
-	animationTest();
-	scheduleUpdate();
-
-	return true;
 }
 
 void IngameScene::debugVariable() {
@@ -575,6 +641,78 @@ void IngameScene::initializePhysics()
 		}
 
 	});
+
+	// if Hit Ground, Wall.
+	_localUpdater->addFunc(P_WALLCHECK, [this](float)->void {
+		if (_characterHitGroundYes) {
+			_characterHitGroundYes = false;
+			characterHitGround(_hitPower);
+
+		}
+		else if (_characterHitLeftWallYes) {
+			_characterHitLeftWallYes = false;
+			characterHitLeftWall(_hitPower);
+		}
+		else if (_characterHitRightWallYes) {
+			_characterHitRightWallYes = false;
+			characterHitRightWall(_hitPower);
+		}
+	
+	});
+
+	// physical things.
+	_localUpdater->addFunc(P_WORLDSTEP, [this](float delta)->void {
+		// moveButton 1
+		auto movePowerToApply = delta * _movePower / SCALE_RATIO;
+		if (_checkMoveButton) {
+			float isRight = 1.0f;
+			if (!_isRight) {
+				isRight = -1.0f;
+			}
+
+			_charBody->ApplyLinearImpulse(b2Vec2(isRight * movePowerToApply, 0), _charBody->GetWorldCenter(), true);
+
+		}
+		// air resistance. 2
+		auto v = _charBody->GetLinearVelocity().x;
+		if (v >= 0.0001f || v <= -0.0001f) {
+			float airResistanceDirection = 1.0f;
+			if (v >= 0) airResistanceDirection = -1.0f;
+			float resistanceToApply = airResistanceDirection * std::abs(v) * _airResistance * delta * 60.f / SCALE_RATIO;
+			//cocos2d::log("resistanceToApply: %f", resistanceToApply);
+			if (std::abs(resistanceToApply) >= std::abs(movePowerToApply) * 2.f) {
+				resistanceToApply = airResistanceDirection * movePowerToApply * 2.f;
+			}
+			_charBody->ApplyLinearImpulse(b2Vec2(resistanceToApply, 0), _charBody->GetWorldCenter(), true);
+		}
+
+		// jumpEnd Check (while long 1)
+		if ((!_checkJumpHighest) && _charBody->GetLinearVelocity().y <= 0) {
+			_checkJumpHighest = true;
+			jumpTouchEnd();
+		}
+
+
+		// world step.
+		world->Step(delta, _velocityIterations, _positionIterations);
+
+
+		// update node position
+		for (b2Body *body = world->GetBodyList(); body != NULL; body =
+			body->GetNext())
+			if (body->GetUserData()) {
+				auto sprite = (Node*)body->GetUserData();
+				sprite->setPosition(
+					Vec2(body->GetPosition().x * SCALE_RATIO,
+						body->GetPosition().y * SCALE_RATIO));
+				sprite->setRotation(-1 * CC_RADIANS_TO_DEGREES(body->GetAngle()));
+
+			}
+
+		//clear forces 
+		world->ClearForces();
+	});
+	
 }
 void IngameScene::initializeEffectManager()
 {
@@ -644,15 +782,25 @@ void IngameScene::doDash() {
 	_airResistance *= _dashAirRatio;
 	_isDashing = true;
 
-	unschedule("endDash");
-	scheduleOnce([this](float delta)->void{
+	//ho!!
+	_localActionManager->removeActionByTag(992, this);
+	auto wait = DelayTime::create(_dashDuration);
+	auto endDashAction = cocos2d::CallFunc::create([this]() {
 		endDash();
-	},_dashDuration, "endDash");
+	});
+	auto seq = Sequence::create(wait, endDashAction, nullptr);
+	seq->setTag(992);
+	runLocalAction(this, seq);
+	//unschedule("endDash");
+	//scheduleOnce([this](float delta)->void{
+	//	endDash();
+	//},_dashDuration, "endDash");
 }
 
 void IngameScene::endDash() {
 	_isDashing = false;
-	unschedule("endDash");
+	//unschedule("endDash");
+	_localActionManager->removeActionByTag(992, this);
 	_airResistance = _originAirResistance;
 
 }
@@ -759,100 +907,17 @@ void IngameScene::update(float delta) {
 	//this->getScheduler()->setTimeScale(_timeScale);
 	// load local scheduler.
 	_localScheduler->update(delta);
-	_localScheduler->setTimeScale(_timeScale);
-	auto time = delta /* * _timeScale*/;
+	//_localScheduler->setTimeScale(_timeScale);
 
-	// moveButton
-	auto movePowerToApply = time * _movePower / SCALE_RATIO;
-	if(_checkMoveButton) {
-		float isRight = 1.0f;
-		if(!_isRight) {
-			isRight = -1.0f;
-		}
-
-		_charBody->ApplyLinearImpulse(b2Vec2(isRight * movePowerToApply, 0), _charBody->GetWorldCenter(), true);
-
-	}
-
-	// air resistance.
-	auto v = _charBody->GetLinearVelocity().x;
-	if(v >= 0.0001f || v<= -0.0001f) {
-		float airResistanceDirection = 1.0f;
-		if(v >= 0) airResistanceDirection = -1.0f;
-		float resistanceToApply = airResistanceDirection * std::abs(v) * _airResistance * time * 60.f / SCALE_RATIO;
-		//cocos2d::log("resistanceToApply: %f", resistanceToApply);
-		if (std::abs(resistanceToApply) >= std::abs(movePowerToApply) * 2.f) {
-			resistanceToApply = airResistanceDirection * movePowerToApply * 2.f;
-		}
-		_charBody->ApplyLinearImpulse(b2Vec2(resistanceToApply, 0),_charBody->GetWorldCenter(), true);
-	}
-
-	// jumpEnd Check (while long 1)
-	if((!_checkJumpHighest) && _charBody -> GetLinearVelocity().y <= 0) {
-		_checkJumpHighest = true;
-		jumpTouchEnd();
-	}
-
-
-	// Generate Effect
-	if (_haveToGenerateEffect) {
-		
-		_haveToGenerateEffect = false;
-	}
-
-
-	// world step.
-	world->Step(time, _velocityIterations, _positionIterations);
-
-	// if Hit Ground, Wall.
-
-	if (_characterHitGroundYes) {
-		_characterHitGroundYes = false;
-		characterHitGround(_hitPower);
-
-	}
-	else if (_characterHitLeftWallYes) {
-		_characterHitLeftWallYes = false;
-		characterHitLeftWall(_hitPower);
-	}
-	else if (_characterHitRightWallYes) {
-		_characterHitRightWallYes = false;
-		characterHitRightWall(_hitPower);
-	}
-
-	// update node position
-	for (b2Body *body = world->GetBodyList(); body != NULL; body =
-			body->GetNext())
-		if (body->GetUserData()) {
-			auto sprite = (Node*) body->GetUserData();
-			sprite->setPosition(
-					Vec2(body->GetPosition().x * SCALE_RATIO,
-							body->GetPosition().y * SCALE_RATIO));
-			sprite->setRotation(-1 * CC_RADIANS_TO_DEGREES(body->GetAngle()));
-
-		}
-
-	
 	// debug velocity pixel per frame
+	/*
 	if (_checkMoveButton) {
 		auto v = _charBody->GetLinearVelocity();
 		cocos2d::log("x velocity: %f, y velocity: %f", v.x * SCALE_RATIO, v.y  * SCALE_RATIO);
-	}
-
-	// camera update with vibration offset.
-	auto camPos = _camera->getCameraPosition();
-	//_camera->setVibrationOffset(_vibrationOffset);
-	_camera -> setCameraPosition(camPos + (_sp->getPosition() - camPos) * _cameraMoveSpeed);
-	_camera->updateCamera(time);
-
-	//clear forces
-	world->ClearForces();
+	}*/
 
 	// do tasks within forced time
 	apAsyncTaskManager::getInstance()->doTasks();
-	//cocos2d::log("updated!!!!@@!@%f", delta);
-
-
 }
 
 void IngameScene::characterHitGround(float power) {
@@ -884,6 +949,7 @@ void IngameScene::characterHitGround(float power) {
 
 void IngameScene::characterHitLeftWall(float power) {
 	cocos2d::log("leftWallHitPower : %f", power);
+	_debugBox->get() << power << DebugBox::push;
 	// wall bouncing
 	if (_isDashing == true) {
 		auto bouncePower = _dashWallBouncePower * (1.0f - _dashWallCondition + power);
@@ -892,6 +958,7 @@ void IngameScene::characterHitLeftWall(float power) {
 				std::cos(_dashWallBounceRadian) * bouncePower / SCALE_RATIO,
 				std::sin(_dashWallBounceRadian) * bouncePower / SCALE_RATIO),
 			_charBody->GetWorldCenter(), true);
+		
 	}
 	endDash();
 }
@@ -969,3 +1036,35 @@ IngameScene::Util::Util()
 IngameScene::Util::~Util()
 {
 }
+
+void IngameScene::UpdateCaller::initWithScheduler(cocos2d::Scheduler* s, const std::string& key)
+{
+	auto f = [this, key](float delta)->void {
+		for (auto& item : _list) {
+			auto func = item.second;
+			func(delta);
+		}
+		cocos2d::log("endLoopUpdateCaller : %s", key.c_str());
+	};
+	s->schedule(f, this, 0, false, key);
+}
+
+void IngameScene::UpdateCaller::delFunc(int priority)
+{
+
+	if (_list.find(priority) != _list.end()) {
+		_list.erase(priority);
+		return;
+	}
+	cocos2d::log("UpdateCaller-delFunc - key doesn't exist!");
+
+}
+
+IngameScene::UpdateCaller::UpdateCaller()
+{
+}
+
+IngameScene::UpdateCaller::~UpdateCaller()
+{
+}
+

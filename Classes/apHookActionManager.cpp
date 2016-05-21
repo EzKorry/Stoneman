@@ -36,7 +36,7 @@ std::shared_ptr<apHookActionManager> apHookActionManager::_sp = nullptr;
 
 
 
-void apHookActionManager::runHook(const std::string& hook) {
+std::shared_ptr<apHookActionManager> apHookActionManager::runHook(const std::string& hook) {
 
 	// if hook found,
 	if(_actions.find(hook) != _actions.end()) {
@@ -48,21 +48,23 @@ void apHookActionManager::runHook(const std::string& hook) {
 			item.second();
 		}
 	}
+	return _sp;
 }
 
 // remove hook.
-void apHookActionManager::removeHook(const std::string& hook) {
+std::shared_ptr<apHookActionManager> apHookActionManager::removeHook(const std::string& hook) {
 
 	// if hook found,
 	if(_actions.find(hook) != _actions.end()) {
 
 		_actions.erase(hook);
 	}
+	return _sp;
 
 }
 
 // remove Action.
-void apHookActionManager::removeAction(const std::string& hook, const std::string& tag) {
+std::shared_ptr<apHookActionManager> apHookActionManager::removeAction(const std::string& hook, const std::string& tag) {
 	auto actionIt = _actions.find(hook);
 	if(actionIt != _actions.end()) {
 		auto& map = (*actionIt).second;
@@ -71,6 +73,7 @@ void apHookActionManager::removeAction(const std::string& hook, const std::strin
 			map.erase(funcIt);
 		}
 	}
+	return _sp;
 }
 
 
