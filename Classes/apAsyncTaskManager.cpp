@@ -48,6 +48,7 @@ void apAsyncTaskManager::init() {
 					//cocos2d::log("elapsedTimeAdded -- %f", elapsedTime.count());
 				}
 				//cocos2d::log("elapsedTimeOver");
+				cocos2d::log("elapsedTime: %f", elapsedTime.count());
 				yield();
 
 			}

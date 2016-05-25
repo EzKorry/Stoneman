@@ -16,9 +16,9 @@
 
 /* how to use:
  * 1. #include "apTouchManager.h"
- * 2. auto manager = APTouchManager::create();
+ * 2. auto manager = APTouchManager::getInstance();
  * 3. manager->registerNode(~~~);
- * 4. manager->setBehavior(~~~);
+ * 4. manager->setBehavior(~~~); or manager->setHook(~~~);
  */
 
 namespace arphomod {
@@ -66,12 +66,12 @@ using APTouchBehavior = std::function<void()>;
 using APTouchBehaviorMap = std::unordered_map<cocos2d::Node*, APTouchBehavior>;
 
 struct APTouchData {
-	APTouchData():checker(
-			[](cocos2d::Touch*)->bool {
+	APTouchData() :checker(
+		[](cocos2d::Touch*)->bool {
 		return false;
-	}){}
+	}) {}
 
-APTouchData(APTouchChecker checker) : checker(checker) {
+	APTouchData(APTouchChecker checker) : checker(checker) {
 
 	}
 	std::map<APTouchType, std::string> hook;
@@ -115,8 +115,12 @@ public:
 		}
 		_amp->addAction(hook, behaviorTag, std::forward<TFunc>(behavior));
 		_d[node].hook.emplace(timing, hook);
-		cocos2d::log("addBehavior Executed!! string:%s, behaviorTag:%s", hook.c_str(), behaviorTag.c_str());
+		//cocos2d::log("addBehavior Executed!! string:%s, behaviorTag:%s", hook.c_str(), behaviorTag.c_str());
 	}
+
+	// only execute event with specified timing.
+	// there's no callback for hook.
+	void addHook(cocos2d::Node* node, APTouchType timing, const std::string& hook);
 
 	// delete behavior
 	void delBehavior(const std::string& hook, const std::string& behaviorTag);

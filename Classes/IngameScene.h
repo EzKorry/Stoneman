@@ -12,14 +12,16 @@
 #define M_PI 3.14159265358979323846
 
 #include <cocos2d.h>
+#include <json.hpp>
 #include "Box2D/Box2D.h"
 #include "ui/CocosGUI.h"
 #include "STContactListener.h"
 #include "STEffectGenerator.h"
-
 USING_NS_CC;
 using namespace cocos2d::ui;
 using namespace arphomod;
+using json = nlohmann::json;
+
 
 // character width:30px, height:48px.
 
@@ -60,6 +62,10 @@ private:
 		// return b as a's positioning.
 		// ex) aStart~aEnd : 0~10, bStart~bEnd:0~100, if a==7.5 then return 75.
 		float bySameRatio(float aStart, float a, float aEnd, float bStart, float bEnd);
+
+		// adjust scale x or y, fitting one side width or height.
+		// 300x500 image, side=200, isWidth=true then 200x333 image created.
+		void resizeSprite(cocos2d::Sprite* sprite, float side, bool sideIsWidth);
 
 		Util();
 		~Util();
@@ -106,15 +112,19 @@ public:
 	virtual ~IngameScene();
 	CREATE_FUNC(IngameScene);
 	bool init() override;
+
+	// Singleton method
+	static IngameScene* getInstance();
 	
+	// method called every frame.
+	void update(float delta) override;
 
 	Util util{};
 	void draw(Renderer *renderer, const Mat4& transform, uint32_t transformUpdated) override;
 	// per frame.
-	void update(float delta) override;
+	
 	void addWall(float px, float py, float w, float h);
 	void setJumpPower(float power);
-	void jumpClicked();
 	void addTextField(const std::function<void(cocos2d::ui::EditBox*)>& callback, const std::string& placeHolder);
 	void addTextField(float* fp, const std::string& placeHolder);
 	void replaceBox();
@@ -122,13 +132,16 @@ public:
 	static const float OneBlockPx;
 	static float _timeScale;
 
-	
-	static IngameScene* getInstance();
+
 
 	b2Body* getCharBody();
 	std::vector<b2Body*> getWalls();
 
+	// local Scheduler methods.
 	Scheduler* getLocalScheduler() const { return _localScheduler; }
+	void scheduleLocally(const std::function<void(float)>& callback, float interval, unsigned int repeat, float delay, const std::string &key);
+	void unscheduleLocally(const std::string &key);
+	void scheduleOnceLocally(const std::function<void(float)> &callback, float delay, const std::string &key);
 	Action * runLocalAction(Node* target, Action* action);
 
 
@@ -139,11 +152,13 @@ private:
 
 	//when init, you should call debug variable!
 	void appInit();
+	void organizeScene();
 	void debugVariable();
 	void animationTest();
 	void gameInterface();
 	void initializePhysics();
 	void initializeEffectManager();
+
 
 	// character dashes.
 	void doDash();
@@ -167,7 +182,7 @@ private:
 	// box2d world
 	static std::shared_ptr<b2World> world;
 
-	float powerMultiplier{ 0.005f };
+	//float powerMultiplier{ 0.005f };
 	float _jumpPower{ 2.0f };
 	float _airResistance{ 0.02f }, _originAirResistance{ 0.0f }, _maxAirResistance{ 1.5f }, _nowMaxAirResistance{ 0.0f };
 	float _movePower{ 10.0f };
@@ -176,9 +191,9 @@ private:
 	float _dashPower{ 8.0f }, _dashAirRatio{ 0.1f }, _dashAngle{ 0.06f * (float)M_PI}, _dashDuration{ 0.3f };
 	bool _isDashing = false;
 	float _gravityScaleWhenJump{ 0.3f };
+	// camera viberation.
 	float _cameraVRatio{ 50.0f };
 	float _cameraVDuration{ 5.0f };
-	int _jumpCount = 0;
 	const float _dashWallCondition{ 0.2f };
 	// for left wall hit
 	float _dashWallBounceRadian{ 0.05f * (float)M_PI };
@@ -187,6 +202,7 @@ private:
 	bool _characterHitLeftWallYes{ false };
 	bool _characterHitRightWallYes{ false };
 	float _hitPower;
+	std::set<b2Fixture*> _floorFixtures;
 
 	//debugBox
 	DebugBox* _debugBox;
@@ -201,6 +217,9 @@ private:
 
 	// updater.
 	std::shared_ptr<UpdateCaller> _localUpdater, _globalUpdater;
+
+	// json
+	json _maps;
 	
 	bool _checkJumpHighest{ false };
 	cocos2d::Vec2 _nowTextPos { Vec2(50.0f, 15.0f) };

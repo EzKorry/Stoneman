@@ -58,6 +58,16 @@ void APTouchManager::registerNode(cocos2d::Node* node, APTouchChecker checker) {
 }
 
 
+void APTouchManager::addHook(cocos2d::Node * node, APTouchType timing, const std::string & hook)
+{
+	// lazy initializing.
+	if (_amp == nullptr) {
+		_amp = apHookActionManager::getInstance();
+	}
+	_amp->addHook(hook);
+	_d[node].hook.emplace(timing, hook);
+}
+
 // delete behavior
 void APTouchManager::delBehavior(const std::string& hook, const std::string& behaviorTag) {
 	if(_amp == nullptr) {

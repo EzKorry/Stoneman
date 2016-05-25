@@ -64,6 +64,9 @@ public:
 		return _sp;
 	}
 
+	// for debug.
+	std::string _d_all_hook();
+
 	virtual ~apHookActionManager();
 
 private:

@@ -62,8 +62,8 @@ private:
 
 
 
-	std::shared_ptr<apHookActionManager> _actionManager;
-	std::shared_ptr<apDataManager> _dataManager;
+	//std::shared_ptr<apHookActionManager> _actionManager;
+	//std::shared_ptr<apDataManager> _dataManager;
 
 	IngameScene* _mainScene {nullptr};
 };

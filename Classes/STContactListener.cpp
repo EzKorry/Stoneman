@@ -31,6 +31,7 @@ void STContactListener::BeginContact(b2Contact* contact) {
 
 
 }
+// no reason worldManifold.normal.x, worldManifold.normal.y.
 void STContactListener::EndContact(b2Contact* contact) {
 	auto fa = contact->GetFixtureA();
 	auto fb = contact->GetFixtureB();
@@ -197,8 +198,8 @@ void STContactListener::removeBody(b2Body* body) {
 
 STContactListener::STContactListener(IngameScene* p) : _mainScene(p)
 {
-	_actionManager = apHookActionManager::getInstance();
-	_dataManager = apDataManager::getInstance();
+	//_actionManager = apHookActionManager::getInstance();
+	//_dataManager = apDataManager::getInstance();
 
 }
 
