@@ -17,7 +17,7 @@ bool STCamera::init() {
 	}
 
 	auto dir = Director::getInstance();
-
+	this->getContentSize();
 	_visibleSize = dir->getVisibleSize();
 
 
@@ -53,6 +53,13 @@ void STCamera::setAbsoluteBorderRect(float ax, float ay, float bx, float by){
 
 }
 */
+void STCamera::setCameraZoom(float zoom) {
+	// zoom should not be 0, or negative.
+	if (zoom <= 0) return;
+
+	_zoom = zoom;
+	setCameraPosition(_cameraPos);
+}
 void STCamera::setCameraPosition(const Vec2& cameraPos){
 
 	_cameraPos = cameraPos;

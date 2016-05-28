@@ -20,6 +20,7 @@ public:
 	void setAbsoluteBorderRect(float ax, float ay, float bx, float by);
 */
 	void setCameraPosition(const cocos2d::Vec2& point);
+	void setCameraZoom(float zoom);
 	cocos2d::Vec2 getCameraPosition() const;
 	void setCameraAnchorPoint(const cocos2d::Vec2& point);
 	void addCameraPosition(const cocos2d::Vec2& relativePos);
@@ -45,6 +46,7 @@ public:
 private:
 
 	cocos2d::Vec2 _cameraPos{cocos2d::Vec2::ZERO};
+	float _zoom = 1.0f;
 	cocos2d::Vec2 _vibrationOffset {cocos2d::Vec2::ZERO };
 	cocos2d::Vec2 _cameraAnchorPoint{cocos2d::Vec2(0.5f,0.5f)};
 	cocos2d::Node* _field{ nullptr };

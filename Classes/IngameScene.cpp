@@ -791,8 +791,12 @@ void IngameScene::initializePhysics()
 		// camera update with vibration offset. 4
 		auto camPos = _camera->getCameraPosition();
 		//_camera->setVibrationOffset(_vibrationOffset);
+		auto posToMove = _sp->getPosition();
+		_camera->setScale(2.0);
+		//auto size
+		//if(posToMove.x < )
 		_camera->setCameraPosition(camPos + (_sp->getPosition() - camPos) * _cameraMoveSpeed);
-		_camera->updateCamera(delta);
+		//_camera->updateCamera(delta);
 	});
 
 	/*_localUpdater->addFunc(213, [this](float delta) {
