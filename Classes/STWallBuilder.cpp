@@ -14,23 +14,46 @@ void STWallBuilder::makeWall(const cocos2d::Rect & rect)
 	
 }
 
-void STWallBuilder::makeWalls(const json & j, const std::string & level)
+void STWallBuilder::makeWalls(rapidjson::Document& j, const std::string & level)
 {
 	_map.clear();
 	if (_target != nullptr) {
 		_target->removeFromParent();
 		_target = nullptr;
 	}
-	auto ss = j["level"];
-	auto s = j["level"]["1"]["size"];
+	auto& ss = j["level"];
+	auto& s = j["level"][level.c_str()]["size"];
 	auto pxRatio = IngameScene::OneBlockPx;
-	_target = RenderTexture::create(s["w"] * pxRatio, s["h"] * pxRatio, Texture2D::PixelFormat::RGBA8888);
-	_target->setPosition(s["w"] * pxRatio / 2, s["h"] * pxRatio / 2);
-	this->addChild(_target, -1);
+	//_target = RenderTexture::create(s["w"] * pxRatio, s["h"] * pxRatio, Texture2D::PixelFormat::RGBA8888);
+	//_target->setPosition(s["w"] * pxRatio / 2, s["h"] * pxRatio / 2);
+	//this->addChild(_target, -1);
+
+	auto createB = [&j](int x, int y, int w, int h)->rapidjson::Value {
+		rapidjson::Value b(rapidjson::Type::kObjectType);
+		b.AddMember("x", x, j.GetAllocator());
+		b.AddMember("y", y, j.GetAllocator());
+		b.AddMember("w", w, j.GetAllocator());
+		b.AddMember("h", h, j.GetAllocator());
+		b.AddMember("type", "wall", j.GetAllocator());
+		b.AddMember("tile", "tile2", j.GetAllocator());
+		/*b["x"].SetInt(x);
+		b["y"].SetInt(y);
+		b["w"].SetInt(w);
+		b["h"].SetInt(h);
+		b["type"].SetString("wall");
+		b["tile"].SetString("tile2");*/
+		return b;
+	};
+	auto& w = j["level"][level.c_str()]["walls"];
+	w.PushBack(createB(-1, -1, 1, s["h"].GetInt() + 2), j.GetAllocator()); // left
+	w.PushBack(createB(s["w"].GetInt(), -1, 1, s["h"].GetInt() + 2), j.GetAllocator()); // right
+	w.PushBack(createB(0, -1, s["w"].GetInt(), 1), j.GetAllocator()); // bottom
+	w.PushBack(createB(0, s["h"].GetInt(), s["w"].GetInt(), 1), j.GetAllocator()); // top
+	
 
 	boost::coroutines::symmetric_coroutine<void>::call_type makeWallsCoroutine(
 		[this, &j, level, pxRatio](boost::coroutines::symmetric_coroutine<void>::yield_type& yield) {
-		
+
 		auto makeBatchNode = [this](const std::string& path, int zIndex) {
 			_batchNodeMap[path] = SpriteBatchNode::create(path);
 			_batchNodeMap[path]->setPosition(Vec2::ZERO);
@@ -38,19 +61,22 @@ void STWallBuilder::makeWalls(const json & j, const std::string & level)
 		};
 		makeBatchNode("tile2.png", 5);
 		makeBatchNode("tile3.png", 5);
-		makeBatchNode("ground_bottom_left2.png", 10);
+		//makeBatchNode("ground_bottom_left2.png", 10);
 		auto n = 0;
-		for (auto& map : j["level"][level]["walls"]) {
+		auto& w = j["level"][level.c_str()]["walls"];
+		for (auto it = w.Begin();it != w.End();	it++) {
+
+			auto& map = *it;
 			auto world = IngameScene::getb2World();
-			auto w_int = map["w"] + 0;
-			auto h_int = map["h"] + 0;
-			auto x_int = map["x"] + 0;
-			auto y_int = map["y"] + 0;
+			auto w_int = map["w"].GetInt();
+			auto h_int = map["h"].GetInt();
+			auto x_int = map["x"].GetInt();
+			auto y_int = map["y"].GetInt();
 			auto px = x_int * pxRatio;
 			auto py = y_int * pxRatio;
 			auto w = w_int * pxRatio;
 			auto h = h_int * pxRatio;
-			std::string tileName = map["tile"];
+			std::string tileName = map["tile"].GetString();
 			tileName.append(".png");
 			auto wallMasterNode = Node::create();
 			wallMasterNode->setAnchorPoint(Vec2(0.5f, 0.5f));
@@ -142,7 +168,7 @@ void STWallBuilder::makeWalls(const json & j, const std::string & level)
 				cocos2d::log("yield after%d", n);
 			}
 		}
-		auto makeSurface = [this, pxRatio](const stdnElement& e, const std::string& path, float rotate) {
+		/*auto makeSurface = [this, pxRatio](const stdnElement& e, const std::string& path, float rotate) {
 			
 			auto surf = Sprite::create(path);
 			surf->setPosition(e.sprite->getPosition());
@@ -154,10 +180,10 @@ void STWallBuilder::makeWalls(const json & j, const std::string & level)
 			//surf->visit();
 			_batchNodeMap[path]->addChild(surf);
 		};
-		std::string surf_bottom_left_path = "ground_bottom_left2.png";
+		std::string surf_bottom_left_path = "ground_bottom_left2.png";*/
 
 		/// RESOLVING MAP!! --- set each block's opacity by depth.
-		for (auto& block : _map){
+		/*for (auto& block : _map){
 			auto& e = block.second;
 			auto& now_x = std::get<0>(block.first);
 			auto& now_y = std::get<1>(block.first);
@@ -169,8 +195,8 @@ void STWallBuilder::makeWalls(const json & j, const std::string & level)
 				for (int aj = -1; aj < 2; aj++) {
 					// if empty.
 					if (_map.find(make_tuple(now_x + ai, now_y + aj)) == _map.end() &&
-						now_x + ai <= j["level"][level]["size"]["w"] + 0 &&
-						now_y + aj <= j["level"][level]["size"]["h"] + 0 &&
+						now_x + ai <= j["level"][level.c_str()]["size"]["w"].GetInt() &&
+						now_y + aj <= j["level"][level.c_str()]["size"]["h"].GetInt() &&
 						now_x + ai >= 0 &&
 						now_y + aj >= 0) {
 						if (ai + aj < 0) bottom_left = true;
@@ -199,13 +225,10 @@ void STWallBuilder::makeWalls(const json & j, const std::string & level)
 			}
 			
 			
-			//e.sprite->release();
-			//_target->end();
 			cocos2d::log("yield before%d", ++n);
-			//yield(doTask);
 			yield();
 			cocos2d::log("yield after%d", n);
-		}
+		}*/
 	});
 	apAsyncTaskManager::getInstance()->addTask(std::move(makeWallsCoroutine));
 }

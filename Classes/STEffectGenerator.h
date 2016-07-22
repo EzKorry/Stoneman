@@ -5,8 +5,11 @@
 
 using namespace cocos2d;
 
-class STParticle;
 class b2Body;
+enum class STEffectTexture {
+	Square
+};
+
 enum class STEffectType {
 	Boom
 };
@@ -39,6 +42,7 @@ struct STEffectConfigure {
 	// min 0, max 255.
 	GLubyte colorBrightnessRange = 30;
 	STEffectType type = STEffectType::Boom;
+	STEffectTexture tex = STEffectTexture::Square;
 };
 class STEffectGenerator : public cocos2d::Node {
 
@@ -48,14 +52,14 @@ public:
 	void generateEffect(const STEffectConfigure& configure, const cocos2d::Vec2& point);
 	void generateEffect(const STEffectConfigure& configure, const float& x, const float& y);
 	void stopEffect(const std::string& name);
+	cocos2d::SpriteBatchNode* getMap(STEffectTexture t);
 	bool init() override;
 
 	CREATE_FUNC(STEffectGenerator);
 
 private:
-	cocos2d::Vector<STParticle*> _particles;
-	std::vector<b2Body*> _particleBodies;
-
+	std::map<STEffectTexture, cocos2d::SpriteBatchNode* > _sp;
+	std::map<STEffectTexture, std::string> _textureFileName;
 };
 
 

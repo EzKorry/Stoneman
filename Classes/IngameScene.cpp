@@ -19,12 +19,11 @@
 #include "DebugBox.h"
 #include <sstream>
 #include <future>
-#include <boost/locale.hpp>
 #include <fstream>
+#include <random>
 
 USING_NS_CC;
 
-using namespace boost::locale;
 using namespace std;
 float IngameScene::_timeScale = 1.0f;
 std::shared_ptr<b2World> IngameScene::world = nullptr;
@@ -105,25 +104,6 @@ void IngameScene::appInit()
 		_debugBox->get() << item << DebugBox::push;
 	}
 
-	// boost localization example.
-	generator gen;
-	// Specify location of dictionaries
-	gen.add_messages_path("./locale");
-	gen.add_messages_domain("hello");
-
-	//Same With locale::global(gen("ko_KR.UTF-8"));
-	std::locale::global(gen(""));
-	
-
-	
-	_debugBox->imbue(locale());
-	while (0) {
-		float speed = 1.5f;
-		_debugBox->get() << translate("Hello World") << DebugBox::push
-			<< format(translate("You are so fast by speed {1}.")) % speed << DebugBox::push
-			<< format(translate("Ganda {1} and so {2} to {3}")) % speed % "ssss" % "ssssdd"
-			<< DebugBox::push;
-	}
 
 	// custom Scheduler initializing.
 	_localScheduler = new (std::nothrow) Scheduler();
@@ -143,7 +123,7 @@ void IngameScene::appInit()
 
 	// Json load
 	auto js = fu->getStringFromFile("map.json");
-	_maps = json::parse(js);
+	_maps.Parse(js.c_str());
 
 
 	// initialize member variables.
@@ -155,15 +135,27 @@ void IngameScene::appInit()
 	auto touchManager = APTouchManager::getInstance();
 	_masterField = Node::create();
 	_box2dWorld = Node::create();
-
-
 	_camera->setField(_masterField);
-
+	_backgroundField = Node::create();
+	
+	//_camera->setContentSize(visibleSize);
 	this->addChild(_camera, 5, "camera");
-	this->addChild(_masterField, 0, "masterField");
+	this->addChild(_masterField, 3, "masterField");
+	this->addChild(_backgroundField, 1, "ingameBgNode");
 	_masterField->addChild(_box2dWorld, 0, "box2dWorld");
 
-	
+	//color setting
+	_colors["default"] = Color4B(255, 255, 255, 255);
+	_colors["bg1-1"] = Color4B(76, 44, 40, 255);
+	_colors["bg1-2"] = Color4B(175, 110, 98, 255);
+	_colors["bg1-3"] = Color4B(255, 214, 204, 255);
+
+	//image or resource path setting.
+	_path["rightButton"] = "img/button_right.png";
+	_path["leftButton"] = "img/button_left.png";
+	_path["jumpButton"] = "img/button_jump.png";
+	_path["skillButton"] = "img/button_skill.png";
+
 
 
 	// font test
@@ -178,6 +170,12 @@ void IngameScene::appInit()
 void IngameScene::organizeScene()
 {
 	auto actionManager = apHookActionManager::getInstance();
+	auto defaultBackground = [this]() {
+		auto size = Director::getInstance()->getVisibleSize();
+		auto drawNode = DrawNode::create();
+		drawNode->drawSolidRect(Vec2::ZERO, Vec2(size.width, size.height), util.switchColor(_colors["default"]));
+		_backgroundField->addChild(drawNode, 0, "default_background");
+	};
 	auto showLogo = [this]() {
 		auto logo = Sprite::create("elvanovLogo2.png");
 		util.resizeSprite(logo, 480, true);
@@ -186,6 +184,8 @@ void IngameScene::organizeScene()
 		_masterField->addChild(logo, 1, "logo");
 	};
 	actionManager->addAction("game_start", "show_logo", showLogo);
+	actionManager->addAction("game_start", "default_background", defaultBackground);
+
 
 	auto delLogo = [this]() {
 		scheduleOnce([this](float delta)->void {
@@ -193,16 +193,18 @@ void IngameScene::organizeScene()
 			apHookActionManager::getInstance()->runHook("show_stage_select");
 		}, 1.f, "delLogo");
 	};
-	actionManager->addAction("game_start", "del_logo", delLogo);
+	actionManager->addAction("game_start", "del_logo", std::move(delLogo));
 
+	// display stage select scene.
 	auto displayStageSelect = [this]() {
 		auto stageSelectNode = Node::create();
 		_masterField->addChild(stageSelectNode, 1, "stageSelectNode");
 
 		TTFConfig conf("fonts/SpoqaHsRegular.ttf", 12);
-		auto label = STLabel::createWithTTF(conf, translate("stage").str() + " 1");
+		auto label = STLabel::createWithTTF(conf, "STAGE1");
 		auto labelSize = label->getContentSize();
 		label->setPosition(300, 300);
+		label->setTextColor(Color4B(0,0,0,255));
 		stageSelectNode->addChild(label);
 
 		auto touchManager = APTouchManager::getInstance();
@@ -210,29 +212,57 @@ void IngameScene::organizeScene()
 			Rect(-labelSize.width / 2, -labelSize.height / 2, labelSize.width, labelSize.height)));
 		touchManager->addHook(label, APTouchType::EndedIn, "stage_1_clicked");
 	};
-	actionManager->addAction("show_stage_select", "display_stage_select", displayStageSelect);
+	actionManager->addAction("show_stage_select", "display_stage_select", std::move(displayStageSelect));
 
+	// stage 1 Start Action
 	auto stage1Start = [this]() {
 		apHookActionManager::getInstance()
 			->runHook("out_stage")
 			->runHook("enter_stage1");
 	};
-	actionManager->addAction("stage_1_clicked", "stage_1_start", stage1Start);
+	actionManager->addAction("stage_1_clicked", "stage_1_start", std::move(stage1Start));
 
+	// remove Stage.
 	auto removeStage = [this]() {
 		_masterField->removeChildByName("stageSelectNode");
 	};
-	actionManager->addAction("out_stage", "remove_stage", removeStage);
+	actionManager->addAction("out_stage", "remove_stage", std::move(removeStage));
 
+	// display Stage 1
 	auto displayStage1 = [this]() {
+
 		initializeEffectManager();
-		initializePhysics();
+		initializePhysics("1");
 		debugVariable();
 		gameInterface();
 		animationTest();
-
+		apHookActionManager::getInstance()
+			->runHook("after_display_stage1");
 	};
-	actionManager->addAction("enter_stage1", "display_stage1", displayStage1);
+	actionManager->addAction("enter_stage1", "display_stage1", std::move(displayStage1));
+	
+	/*auto debugRefreshPics = [this]() {
+		std::map<std::string, std::string> m;
+		m["leftButton"] = "arrow-left.png";
+		m["rightButton"] = "arrow-right.png";
+		m["upButton"] = "arrow-up.png";
+		m["skillButton"] = "skill1.png";
+		schedule([this, m](float delta) {
+			for (auto& item : m) {
+				auto& name = item.first;
+				auto& filename = item.second;
+				auto b = _camera->getChildByName<Sprite*>(name);
+				auto fileExists = cocos2d::FileUtils::getInstance()->isFileExist(filename) == true;
+				//Director::getInstance()->getTextureCache()->add
+				if(b && fileExists) b->initWithFile(filename);
+			}
+			
+		},1, CC_REPEAT_FOREVER, 0, "refresh_pics");
+	};
+	actionManager->addAction("after_display_stage1", "refresh_pics", debugRefreshPics);*/
+	
+	
+	
 	_debugBox->get() << actionManager->_d_all_hook() << DebugBox::push;
 }
 
@@ -383,21 +413,26 @@ void IngameScene::animationTest()
 void IngameScene::gameInterface()
 {
 
-
 	auto buttonSize = Size(150.f, 150.f);
+	auto buttonSpriteSize = Size(110.f, 110.f);
 	auto touchManager = APTouchManager::getInstance();
 	auto visibleSize = Director::getInstance()->getVisibleSize();
 	//---------------
 	//	 move left button
 	//---------------
-	auto leftButton = Sprite::create("arrow-left.png");
-	auto leftButtonSize = buttonSize;//leftButton->getContentSize();
-	leftButton->setPosition(leftButtonSize.width / 2, leftButtonSize.height / 2);
+	auto leftButton = Sprite::create(_path["leftButton"]);
+	leftButton->setPosition(buttonSize.width / 2, buttonSize.height / 2); // 75,75
+	leftButton->setScale(buttonSpriteSize.width / leftButton->getContentSize().width);
 	_camera->addChild(leftButton, 1, "leftButton");
-	touchManager->registerNode(leftButton,
+	/*touchManager->registerNode(leftButton,
 		APTouchManager::createCheckerWithRect(leftButton,
 			Rect(-buttonSize.width / 2, -buttonSize.height / 2,
+				buttonSize.width, buttonSize.height)));*/ // (0,0) ~ (150,150)
+	touchManager->registerNode(leftButton,
+		APTouchManager::createCheckerWithRect(
+			Rect(0, 0,
 				buttonSize.width, buttonSize.height)));
+	
 	touchManager->setOrder(leftButton, 10);
 	auto leftOn = [this]()->void {
 		endDash();
@@ -410,7 +445,7 @@ void IngameScene::gameInterface()
 		_isRight = true;
 	};
 	auto cancelMove = [this]()->void {
-		this->endDash();
+		endDash();
 		_checkMoveButton = false;
 	};
 	touchManager->addBehavior(leftButton, APTouchType::Began, leftOn,
@@ -429,14 +464,17 @@ void IngameScene::gameInterface()
 	//---------------
 	// move right button
 	//---------------
-	auto rightButton = Sprite::create("arrow-right.png");
-	auto rightButtonSize = buttonSize;//rightButton->getContentSize();
-	rightButton->setPosition(rightButtonSize.width * 1.5f, rightButtonSize.height / 2);
+	auto rightButton = Sprite::create(_path["rightButton"]);
+	rightButton->setPosition(buttonSize.width * 1.5f, buttonSize.height / 2);
+	rightButton->setScale(buttonSpriteSize.width / rightButton->getContentSize().width);
 	_camera->addChild(rightButton, 1, "rightButton");
-	touchManager->registerNode(rightButton,
+	/*touchManager->registerNode(rightButton,
 		APTouchManager::createCheckerWithRect(rightButton,
 			Rect(-buttonSize.width / 2, -buttonSize.height / 2,
-				buttonSize.width, buttonSize.height)));
+				buttonSize.width, buttonSize.height)));*/
+	touchManager->registerNode(rightButton,
+		APTouchManager::createCheckerWithRect(
+			Rect(buttonSize.width, 0,buttonSize.width, buttonSize.height)));
 	touchManager->setOrder(rightButton, 10);
 	touchManager->addBehavior(rightButton, APTouchType::Began, rightOn,
 		"rightDown", "rightDown_b");
@@ -459,9 +497,10 @@ void IngameScene::gameInterface()
 	//---------------------
 	// jump button
 	//--------------------
-	auto upButton = Sprite::create("arrow-up.png");
+	auto upButton = Sprite::create(_path["jumpButton"]);
 	auto upButtonSize = buttonSize;//upButton->getContentSize();
 	upButton->setPosition(visibleSize.width - upButtonSize.width / 2, upButtonSize.height / 2);
+	upButton->setScale(buttonSpriteSize.width / upButton->getContentSize().width);
 	_camera->addChild(upButton, 1, "upButton");
 	touchManager->registerNode(upButton,
 		APTouchManager::createCheckerWithRect(upButton,
@@ -481,9 +520,10 @@ void IngameScene::gameInterface()
 	//---------------------
 	// dash button
 	//--------------------
-	auto skillButton = Sprite::create("skill1.png");
+	auto skillButton = Sprite::create(_path["skillButton"]);
 	auto skillButtonSize = buttonSize;//skillButton->getContentSize();
 	skillButton->setPosition(visibleSize.width - skillButtonSize.width *1.5f, skillButtonSize.height / 2);
+	skillButton->setScale(buttonSpriteSize.width / skillButton->getContentSize().width);
 	_camera->addChild(skillButton, 1, "skillButton");
 	touchManager->registerNode(skillButton,
 		APTouchManager::createCheckerWithRect(skillButton,
@@ -555,10 +595,11 @@ void IngameScene::gameInterface()
 	};
 	_eventDispatcher->addEventListenerWithSceneGraphPriority(keyboardListener, this);
 
-	// background
+	// background 
+	/*
 	auto drawBack = DrawNode::create();
 	drawBack->drawSolidRect(Vec2::ZERO, Vec2(visibleSize.width, visibleSize.height), Color4F(Color4B(84, 65, 52, 1)));
-	this->addChild(drawBack, 0, "drawBack");
+	this->addChild(drawBack, 0, "drawBack");*/
 
 	// hookActions
 	auto am = apHookActionManager::getInstance();
@@ -574,36 +615,113 @@ void IngameScene::gameInterface()
 	});
 
 }
-void IngameScene::initializePhysics()
+void IngameScene::initializePhysics(const std::string& level)
 {
+	_level = level;
 	auto visibleSize = Director::getInstance()->getVisibleSize();
 	auto gravity = b2Vec2(0.0f, -40.0f);
 	world = std::make_shared<b2World>(gravity);
 
+#if  (CC_TARGET_PLATFORM == CC_PLATFORM_WIN32)
 	_debugDraw = std::make_shared<GLESDebugDraw>(SCALE_RATIO);
 	world->SetDebugDraw(_debugDraw.get());
 	uint32 flags = 0;
 	flags += b2Draw::e_shapeBit;
 	_debugDraw->SetFlags(flags);
-
+#endif
 
 
 	//ADD WALL
-	
-
 	_wallBuilder = STWallBuilder::create();
-	_wallBuilder->makeWalls(_maps, "1");
+	_wallBuilder->makeWalls(_maps, _level);
+	_camera->setBorderSize(
+		_maps["level"][_level.c_str()]["size"]["w"].GetInt(),
+		_maps["level"][_level.c_str()]["size"]["h"].GetInt());
 	_masterField->addChild(_wallBuilder, 10, "wallBuilder");
 	//_wallBuilder->makeWall(-20, -20, 40, 40);
 	//_wallBuilder->makeWall(20, 0, 7, 10);
-
-
 	/*addWall((visibleSize.width / 2), 50, visibleSize.width, 10); //CEIL
 	addWall(0, (visibleSize.height / 2), 10, visibleSize.height); //LEFT
 	addWall(visibleSize.width, (visibleSize.height / 2), 10,
 		visibleSize.height); //RIGHT*/
 
-							 // CHARACTER BOX2D PHYSICS!
+
+	//add backgrounds
+	
+
+	using scv = boost::coroutines::symmetric_coroutine<void>;
+	
+	apAsyncTaskManager::getInstance()->addTask(
+		scv::call_type([this](scv::yield_type& yield) {
+		_backgroundFollowRatio.clear();
+		_debugBox->get() << "abcedfg" << _debugBox->push;
+
+		if (_level == "1") {
+			auto makeBackground = [this, &yield](
+				float minHeight, float maxHeight, float minLength, float maxLength, Color4B color)
+			-> cocos2d::Node* {
+				auto drawNode = DrawNode::create();
+				auto totalLength = 0.f;
+				auto lengthLimit = Director::getInstance()->getVisibleSize().width;
+				std::vector<std::tuple<float, float>> vs;
+				std::random_device rd;
+				std::mt19937 gen(rd());
+				std::uniform_real_distribution<float>
+					d_height(minHeight, maxHeight),
+					d_length(minLength, maxLength);
+				
+
+				while (totalLength <= lengthLimit) {
+					auto l = d_length(gen);
+					auto h = d_height(gen);
+
+					totalLength += l;
+					if (totalLength > lengthLimit) {
+						l -= totalLength - lengthLimit;
+					}
+
+					vs.emplace_back(make_tuple(l, h));
+					//_debugBox->get() << "length : " << l << " height : " << h << _debugBox->push;
+				}
+				
+				auto drawnode = DrawNode::create();
+				totalLength = 0;
+				auto n = [this, &vs, &drawnode, &totalLength, &color, &yield]() {
+					for (auto& item : vs) {
+						auto& length = std::get<0>(item);
+						auto& height = std::get<1>(item);
+						drawnode->drawSolidRect(
+							Vec2(totalLength, 0.f),
+							Vec2(totalLength + length, height),
+							util.switchColor(color));
+						totalLength += length;
+					}
+				};
+				n();
+				n();
+				return drawnode;
+			};
+
+			auto bg3 = makeBackground(200.f, 350.f, 20.f, 200.f, _colors["bg1-3"]);
+			auto bg2 = makeBackground(300.f, 350.f, 4.f, 100.f, _colors["bg1-2"]);
+			auto bg1 = DrawNode::create();
+			auto size = Director::getInstance()->getVisibleSize();
+			bg1->drawSolidRect(Vec2(0, 0), Vec2(size.width, size.height), util.switchColor(_colors["bg1-1"]));
+			_backgroundField->addChild(bg3, 5);
+			_backgroundField->addChild(bg2, 3);
+			_backgroundField->addChild(bg1, 1);
+			_backgroundFollowRatio.emplace(bg3, 0.3f);
+			_backgroundFollowRatio.emplace(bg2, 0.1f);
+			_backgroundFollowRatio.emplace(bg1, 0.f);
+
+			
+		}
+
+
+	}));
+
+
+	// CHARACTER BOX2D PHYSICS!
 	_sp = Sprite::create("character.png");
 	_sp->setScaleX(_boxWidth / _sp->getContentSize().width);
 	_sp->setScaleY(_boxHeight / _sp->getContentSize().height);
@@ -622,9 +740,9 @@ void IngameScene::initializePhysics()
 	charFixtureDef.filter.maskBits = CHARACTER || BOSS || WALL;
 
 	
-	auto startCoord = _maps["level"]["1"]["start"];
+	auto& startCoord = _maps["level"][_level.c_str()]["start"];
 	b2BodyDef charBodyDef;
-	charBodyDef.position.Set((startCoord["x"] * OneBlockPx) / SCALE_RATIO, (startCoord["y"] * OneBlockPx) / SCALE_RATIO);
+	charBodyDef.position.Set((startCoord["x"].GetInt() * OneBlockPx) / SCALE_RATIO, (startCoord["y"].GetInt() * OneBlockPx) / SCALE_RATIO);
 	charBodyDef.userData = _sp;
 	charBodyDef.fixedRotation = true;
 	charBodyDef.type = b2BodyType::b2_dynamicBody;
@@ -652,6 +770,43 @@ void IngameScene::initializePhysics()
 			_floorFixtures.emplace(other);
 		}
 
+		/*// if hit Ground!
+		if (impulse->normalImpulses[0] >= 0.05f &&
+			worldManifold.normal.y == 1.0f &&
+			worldManifold.normal.x == 0.0f) {
+
+
+
+			// power max : 0.2f
+			float power = impulse->normalImpulses[0];
+			if (power >= 0.2f) {
+				power = 0.2f;
+			}
+			//_characterHitGroundYes = true;
+			characterHitGround(power);
+
+
+
+		}
+		// hit walls if character is moving left
+		else if ((impulse->normalImpulses[0] >= 0.01f ||
+			impulse->normalImpulses[1] >= 0.01f) &&
+			worldManifold.normal.y == 0.0f &&
+			worldManifold.normal.x == 1.0f) {
+			characterHitLeftWall(impulse->normalImpulses[0]);
+			//_characterHitLeftWallYes = true;
+		}
+
+		// hit walls if character is moving right
+		else if ((impulse->normalImpulses[0] >= 0.01f ||
+			impulse->normalImpulses[1] >= 0.01f) &&
+			worldManifold.normal.y == 0.0f &&
+			worldManifold.normal.x == -1.0f) {
+
+			characterHitRightWall(impulse->normalImpulses[0]);
+			//_characterHitRightWallYes = true;
+		}*/
+
 	});
 
 	_cl_p->setPostSolve(_charBody,
@@ -661,19 +816,20 @@ void IngameScene::initializePhysics()
 		contact->GetWorldManifold(&worldManifold);
 
 		_hitPower = impulse->normalImpulses[0];
+		cocos2d::log("nX:%.2f, nY:%.2f, inp0:%.2f, inp1:%.2f, itp0:%.2f, itp1:%.2f",
+			worldManifold.normal.x,
+			worldManifold.normal.y,
+			impulse->normalImpulses[0],
+			impulse->normalImpulses[1], // useless. -107374176.00
+			impulse->tangentImpulses[0], // useless. -0.00
+			impulse->tangentImpulses[1]); // useless. -107374176.00
 		// if hit Ground!
 		if (impulse->normalImpulses[0] >= 0.05f &&
 			worldManifold.normal.y == 1.0f &&
 			worldManifold.normal.x == 0.0f) {
 
-			/*cocos2d::log("nX:%.2f, nY:%.2f, inp0:%.2f, inp1:%.2f, itp0:%.2f, itp1:%.2f",
-				worldManifold.normal.x,
-				worldManifold.normal.y,
-				impulse->normalImpulses[0],
-				impulse->normalImpulses[1], // useless. -107374176.00
-				impulse->tangentImpulses[0], // useless. -0.00
-				impulse->tangentImpulses[1]); // useless. -107374176.00
-				*/
+			
+				
 											  // power max : 0.2f
 			float power = impulse->normalImpulses[0];
 			if (power >= 0.2f) {
@@ -781,7 +937,6 @@ void IngameScene::initializePhysics()
 				sprite->setRotation(-1 * CC_RADIANS_TO_DEGREES(body->GetAngle()));
 
 			}
-
 		//clear forces 
 		world->ClearForces();
 	});
@@ -792,19 +947,23 @@ void IngameScene::initializePhysics()
 		auto camPos = _camera->getCameraPosition();
 		//_camera->setVibrationOffset(_vibrationOffset);
 		auto posToMove = _sp->getPosition();
-		_camera->setScale(2.0);
-		//auto size
-		//if(posToMove.x < )
 		_camera->setCameraPosition(camPos + (_sp->getPosition() - camPos) * _cameraMoveSpeed);
 		//_camera->updateCamera(delta);
-	});
 
-	/*_localUpdater->addFunc(213, [this](float delta) {
-		for (auto& item : _floorFixtures) {
-			_debugBox->get() << std::hex << (int)item << ", ";
+
+		auto size = Director::getInstance()->getVisibleSize();
+		for (auto& item : _backgroundFollowRatio) {
+			auto& backgroundNode = item.first;
+			auto& followingRatio = item.second;
+			auto d = _masterField->getPosition().x * followingRatio;
+			while (d < -size.width) {
+				d += size.width;
+			}
+			backgroundNode->setPosition(d, 0);
 		}
-		_debugBox->get() << DebugBox::push;
-	});*/
+		_debugBox->get() << "x:" << _masterField->getPosition().x << " y:" << _masterField->getPosition().y << _debugBox->push;
+		//make background move.
+	});
 	
 }
 void IngameScene::initializeEffectManager()

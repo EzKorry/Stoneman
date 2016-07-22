@@ -50,6 +50,7 @@ void DebugBox::print()
 	label->setAlignment(TextHAlignment::RIGHT);
 	label->setAnchorPoint(Vec2(1.f,0.f));
 	label->setPosition(0, 0);
+	label->setTextColor(Color4B(0, 0, 0, 255));
 	this->addChild(label);
 
 	for (auto& p : _list) {

@@ -44,8 +44,6 @@ std::shared_ptr<apHookActionManager> apHookActionManager::runHook(const std::str
 
 		// run each function.
 		for(auto& item : _actions[hook]) {
-			////cocos2d::log("actionManager RunHook string:%s",hook.c_str());
-
 			item.second();
 		}
 	}

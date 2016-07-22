@@ -2,11 +2,10 @@
 #include "C:\cocos2d-x-project\Stoneman\cocos2d\cocos\2d\CCNode.h"
 #include <cocos2d.h>
 #include <unordered_map>
-#include <json.hpp>
+#include <json/document.h>
 #include <string>
-
+using namespace rapidjson;
 using namespace cocos2d;
-using json = nlohmann::json;
 
 // used to make walls.
 // it should be added as child to master node.
@@ -28,7 +27,7 @@ public:
 	STWallBuilder();
 	CREATE_FUNC(STWallBuilder);
 	void makeWall(const cocos2d::Rect& rect);
-	void makeWalls(const json& j, const std::string & level);
+	void makeWalls(rapidjson::Document& j, const std::string & level);
 	bool init() override;
 	static const float surfaceGlowRatio;
 	// based coordinate. 1 = 20px, 

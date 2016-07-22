@@ -110,8 +110,7 @@ void STLabel::setScale(float scaleX, float scaleY)
 }
 
 STLabel::STLabel(TextHAlignment hAlignment /*= TextHAlignment::LEFT*/,
-	TextVAlignment vAlignment /*= TextVAlignment::TOP*/) {
-	Label::Label(hAlignment, vAlignment);
+	TextVAlignment vAlignment /*= TextVAlignment::TOP*/) : Label(hAlignment, vAlignment) {
 }
 STLabel::~STLabel()
 {

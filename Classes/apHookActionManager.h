@@ -15,7 +15,6 @@
 
 namespace arphomod {
 using namespace std;
-
 using apActionContainer = unordered_map<string, function<void()>>;
 using apHookActionContainer = unordered_map<string,apActionContainer>;
 

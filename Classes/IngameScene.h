@@ -12,7 +12,8 @@
 #define M_PI 3.14159265358979323846
 
 #include <cocos2d.h>
-#include <json.hpp>
+#include "json/rapidjson.h"
+#include "json/document.h"
 #include "Box2D/Box2D.h"
 #include "ui/CocosGUI.h"
 #include "STContactListener.h"
@@ -20,7 +21,6 @@
 USING_NS_CC;
 using namespace cocos2d::ui;
 using namespace arphomod;
-using json = nlohmann::json;
 
 
 // character width:30px, height:48px.
@@ -66,6 +66,11 @@ private:
 		// adjust scale x or y, fitting one side width or height.
 		// 300x500 image, side=200, isWidth=true then 200x333 image created.
 		void resizeSprite(cocos2d::Sprite* sprite, float side, bool sideIsWidth);
+		
+		
+		Color4F switchColor(const Color4B& color) {
+			return Color4F(color);
+		}
 
 		Util();
 		~Util();
@@ -79,6 +84,7 @@ private:
 
 		// lower number, higher priority.
 		// ex) 1:first, 10:last.
+		// priority cannot be overwritten.
 		template<typename TFunc>
 		void addFunc(int priority, TFunc&& func){
 			if (_list.find(priority) != _list.end()) {
@@ -156,7 +162,7 @@ private:
 	void debugVariable();
 	void animationTest();
 	void gameInterface();
-	void initializePhysics();
+	void initializePhysics(const std::string& level);
 	void initializeEffectManager();
 
 
@@ -204,6 +210,9 @@ private:
 	float _hitPower;
 	std::set<b2Fixture*> _floorFixtures;
 
+	//default Background color.
+	std::map<string, Color4B> _colors;
+
 	//debugBox
 	DebugBox* _debugBox;
 
@@ -219,7 +228,20 @@ private:
 	std::shared_ptr<UpdateCaller> _localUpdater, _globalUpdater;
 
 	// json
-	json _maps;
+	rapidjson::Document _maps;
+
+	// level Name
+	std::string _level{ "" };
+
+	// path string store map
+	std::map<string, string> _path;
+
+	// background node Map
+	// ratio: 1 = absolutely like masterfield, 0 = stick at camera.
+	std::map<cocos2d::Node*,float> _backgroundFollowRatio;
+
+	// background node
+	cocos2d::Node* _backgroundField;
 	
 	bool _checkJumpHighest{ false };
 	cocos2d::Vec2 _nowTextPos { Vec2(50.0f, 15.0f) };
@@ -230,7 +252,9 @@ private:
 	b2Body* _charBody { nullptr };
 	b2CircleShape ballShape;
 	b2BodyDef ballBodyDef;
+#if  (CC_TARGET_PLATFORM == CC_PLATFORM_WIN32)
 	std::shared_ptr<GLESDebugDraw> _debugDraw { nullptr};
+#endif
 	std::shared_ptr<STContactListener> _cl_p { nullptr};
 	//GLESDebugDraw *_debugDraw { nullptr };
 	std::vector<b2Body*> _walls;

@@ -1,5 +1,4 @@
 #include "STEffectGenerator.h"
-#include "STParticle.h"
 #include "IngameScene.h"
 #include <vector>
 #include <random>
@@ -13,17 +12,36 @@ STEffectGenerator::~STEffectGenerator()
 {
 }
 
+cocos2d::SpriteBatchNode * STEffectGenerator::getMap(STEffectTexture t)
+{
+	if (_sp[t] == nullptr) {
+		std::string file;
+		switch (t) {
+		case STEffectTexture::Square:
+			file = "white.png";
+			break;
+		default:
+			file = "white.png";
+			break;
+
+		}
+		_sp[t] = SpriteBatchNode::create(file);
+		this->addChild(_sp[t]);
+	}
+	return _sp[t];
+}
+
 bool STEffectGenerator::init() {
 	if (!Node::init()) return false;
 
-
+	_textureFileName[STEffectTexture::Square] = "white.png";
 
 	return true;
 }
 
 void STEffectGenerator::generateEffect(const STEffectConfigure & configure, const cocos2d::Vec2& point)
 {
-
+	
 	// 값이 적법한지 검사.
 	if (configure.minPower > configure.maxPower ||
 		configure.minSize > configure.maxSize ||
@@ -96,13 +114,13 @@ void STEffectGenerator::generateEffect(const STEffectConfigure & configure, cons
 		GLubyte b = (configure.color.b + (int)isBlack) * colorRatio;
 		GLubyte a = d_alpha(gen);
 
-		auto sp = Sprite::create("white.png");
+		auto sp = Sprite::create(_textureFileName[configure.tex]);
 		sp->setScale(size / 10);
 		sp->setPosition(point.x + diffuseX, point.y + diffuseY);
 		sp->setCascadeColorEnabled(true);
 		sp->setColor(Color3B(r, g, b));
 		sp->setOpacity(a);
-		this->addChild(sp);
+		getMap(configure.tex)->addChild(sp);
 		
 		b2PolygonShape particleShape;
 		particleShape.SetAsBox(size / SCALE_RATIO / 2, size / SCALE_RATIO / 2);

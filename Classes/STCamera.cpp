@@ -19,26 +19,21 @@ bool STCamera::init() {
 	auto dir = Director::getInstance();
 	this->getContentSize();
 	_visibleSize = dir->getVisibleSize();
-
+	_borderRect = Rect(0.f, 0.f, 100.f, 100.f);
 
 
 	return true;
 
 }
-
-void STCamera::updateCamera(float delta)
-{
-
-
+void STCamera::setBorderSize(int width, int height) {
+	_borderRect = cocos2d::Rect(0, 0, width * IngameScene::OneBlockPx, height * IngameScene::OneBlockPx);
 }
-
 void STCamera::setField(cocos2d::Node* field){
 	if(_field != nullptr) {
 		_field->release();
 	}
 	_field = field;
 	_field -> retain();
-
 
 }
 /*
@@ -68,9 +63,23 @@ void STCamera::setCameraPosition(const Vec2& cameraPos){
 
 		float offsetX = _visibleSize.width * _cameraAnchorPoint.x;
 		float offsetY = _visibleSize.height * _cameraAnchorPoint.y;
+		_field->setScale(_zoom);
 
-		_field->setPosition(-_cameraPos.x + offsetX + _vibrationOffset.x, -_cameraPos.y + offsetY + _vibrationOffset.y);
+		// camera solver. fit in border.
+		auto x = -_cameraPos.x * _zoom + offsetX;
+		if (x > 0) x = 0;
+		else if (x < -_borderRect.getMaxX() + _visibleSize.width)
+			x = -_borderRect.getMaxX() + _visibleSize.width;
 
+		auto y = -_cameraPos.y * _zoom + offsetY;
+		if (y > 0) y = 0;
+		else if (y < -_borderRect.getMaxY() + _visibleSize.height)
+			y = -_borderRect.getMaxY() + _visibleSize.height;
+
+		_field->setPosition(
+			x + _vibrationOffset.x,
+			y + _vibrationOffset.y);
+		
 
 	}
 
