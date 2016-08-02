@@ -2,6 +2,8 @@
 #include "IngameScene.h"
 #include <boost/coroutine/all.hpp>
 #include "apAsyncTaskManager.h"
+#include <tuple>
+#include <map>
 
 const float STWallBuilder::surfaceGlowRatio = 0.1f;
 STWallBuilder::STWallBuilder()
@@ -45,10 +47,27 @@ void STWallBuilder::makeWalls(rapidjson::Document& j, const std::string & level)
 		return b;
 	};
 	auto& w = j["level"][level.c_str()]["walls"];
-	w.PushBack(createB(-1, -1, 1, s["h"].GetInt() + 2), j.GetAllocator()); // left
+
+	auto& jal = j.GetAllocator();
+	rapidjson::Value 
+		b(rapidjson::Type::kObjectType), 
+		mb(rapidjson::Type::kObjectType);
+
+	b.AddMember("x", s["w"].GetInt(), jal);
+	b.AddMember("y", s["h"].GetInt(), jal);
+	b.AddMember("type", "solid_wall", jal);
+	b.AddMember("tile", "none", jal);
+
+	mb.AddMember("x", 0, jal);
+	mb.AddMember("y", 0, jal);
+	mb.AddMember("type", "move_absolute", jal);
+	
+	w.PushBack(mb, jal);
+	w.PushBack(b, jal);
+	/*w.PushBack(createB(-1, -1, 1, s["h"].GetInt() + 2), j.GetAllocator()); // left
 	w.PushBack(createB(s["w"].GetInt(), -1, 1, s["h"].GetInt() + 2), j.GetAllocator()); // right
 	w.PushBack(createB(0, -1, s["w"].GetInt(), 1), j.GetAllocator()); // bottom
-	w.PushBack(createB(0, s["h"].GetInt(), s["w"].GetInt(), 1), j.GetAllocator()); // top
+	w.PushBack(createB(0, s["h"].GetInt(), s["w"].GetInt(), 1), j.GetAllocator()); // top*/
 	
 
 	boost::coroutines::symmetric_coroutine<void>::call_type makeWallsCoroutine(
@@ -64,108 +83,185 @@ void STWallBuilder::makeWalls(rapidjson::Document& j, const std::string & level)
 		//makeBatchNode("ground_bottom_left2.png", 10);
 		auto n = 0;
 		auto& w = j["level"][level.c_str()]["walls"];
+		std::tuple<int, int> nowXY;
+		std::map<string, std::tuple<int, int>> checkpoints;
+		auto& nowX = std::get<0>(nowXY);
+		auto& nowY = std::get<1>(nowXY);
+
 		for (auto it = w.Begin();it != w.End();	it++) {
 
 			auto& map = *it;
-			auto world = IngameScene::getb2World();
-			auto w_int = map["w"].GetInt();
-			auto h_int = map["h"].GetInt();
-			auto x_int = map["x"].GetInt();
-			auto y_int = map["y"].GetInt();
-			auto px = x_int * pxRatio;
-			auto py = y_int * pxRatio;
-			auto w = w_int * pxRatio;
-			auto h = h_int * pxRatio;
-			std::string tileName = map["tile"].GetString();
-			tileName.append(".png");
-			auto wallMasterNode = Node::create();
-			wallMasterNode->setAnchorPoint(Vec2(0.5f, 0.5f));
-			this->addChild(wallMasterNode);
+			bool hasToMakeWall = false;
+			auto w_int = 0;
+			auto h_int = 0;
+			auto x_int = 0;
+			auto y_int = 0;
 
-			// Edge shape with virtual vertex.
-			b2PolygonShape floorShape;
-			floorShape.SetAsBox(w / SCALE_RATIO / 2, h / SCALE_RATIO / 2);
 
-			b2FixtureDef floorFixture;
-			floorFixture.density = 1.0f;
-			floorFixture.friction = 0.5f;
-			floorFixture.restitution = 0;
-			floorFixture.shape = &floorShape;
+			if (!map.HasMember("type")) return;
+			std::string type = map["type"].GetString();
 
-			b2BodyDef floorBodyDef;
-			floorBodyDef.position.Set(px / SCALE_RATIO, py / SCALE_RATIO);
-			floorBodyDef.userData = wallMasterNode;
-			floorBodyDef.type = b2BodyType::b2_staticBody;
-			auto wallBody = world->CreateBody(&floorBodyDef);
+			// If Move to Specific Checkpoint,
+			if (type == "move_checkpoint") {
+				nowXY = checkpoints[map["checkpoint"].GetString()];
+			}
+			else {
+				auto jsonX = map["x"].GetInt();
+				auto jsonY = map["y"].GetInt();
+				
+				// Move NowXY To Absolute Position
+				if (type == "move_absolute") {
+					nowX = jsonX;
+					nowY = jsonY;
 
-			b2EdgeShape edgeShape;
-			b2FixtureDef myFixtureDef;
-			myFixtureDef.shape = &edgeShape;
-
-			b2Vec2 leftBottom(0 / SCALE_RATIO, 0 / SCALE_RATIO);
-			b2Vec2 leftTop(0 / SCALE_RATIO, h / SCALE_RATIO);
-			b2Vec2 rightBottom(w / SCALE_RATIO, 0 / SCALE_RATIO);
-			b2Vec2 rightTop(w / SCALE_RATIO, h / SCALE_RATIO);
-
-			// left
-			edgeShape.Set(leftBottom, leftTop);
-			edgeShape.m_vertex0.Set(leftBottom.x, leftBottom.y - 1);
-			edgeShape.m_vertex3.Set(leftTop.x, leftTop.y + 1);
-			edgeShape.m_hasVertex0 = true;
-			edgeShape.m_hasVertex3 = true;
-			wallBody->CreateFixture(&myFixtureDef);
-
-			// top
-			edgeShape.Set(leftTop, rightTop);
-			edgeShape.m_vertex0.Set(leftTop.x - 1, leftTop.y);
-			edgeShape.m_vertex3.Set(rightTop.x + 1, leftTop.y);
-			edgeShape.m_hasVertex0 = true;
-			edgeShape.m_hasVertex3 = true;
-			wallBody->CreateFixture(&myFixtureDef);
-
-			// right
-			edgeShape.Set(rightTop, rightBottom);
-			edgeShape.m_vertex0.Set(rightTop.x, rightTop.y + 1);
-			edgeShape.m_vertex3.Set(rightBottom.x, rightBottom.y - 1);
-			edgeShape.m_hasVertex0 = true;
-			edgeShape.m_hasVertex3 = true;
-			wallBody->CreateFixture(&myFixtureDef);
-
-			// bottom
-			edgeShape.Set(leftBottom, rightBottom);
-			edgeShape.m_vertex0.Set(leftBottom.x - 1, leftBottom.y);
-			edgeShape.m_vertex3.Set(rightBottom.x + 1, rightBottom.y);
-			edgeShape.m_hasVertex0 = true;
-			edgeShape.m_hasVertex3 = true;
-			wallBody->CreateFixture(&myFixtureDef);
-			//_walls.emplace_back(wallBody);
-
-			for (int i = x_int; i < x_int + w_int; i++) {
-				//_target->begin();
-				for (int j = y_int; j < y_int + h_int; j++) {
-					
-					auto sp = Sprite::create(tileName);
-					//sp->retain();
-					sp->setScale(pxRatio / sp->getContentSize().width);
-					sp->setPosition((i + 1.f/2.f) * pxRatio , (j + 1.f/2.f) * pxRatio);
-					_batchNodeMap[tileName]->addChild(sp);
-					//sp->visit();
-					auto index = make_tuple(i,j);
-					_map[index].type = ST_void;
-					_map[index].sprite = sp;
-					//sp->setVisible(false);
-					/*
-					auto black = Sprite::create("black.png");
-					black->setScale(pxRatio / black->getContentSize().width);
-					black->setPosition(i * pxRatio + pxRatio / 2 + px, j * pxRatio + pxRatio / 2 + py);
-					_black->addChild(black);*/
-					//black->setVisible(false);
 				}
-				//_target->end();
-				cocos2d::log("yield before%d", ++n);
-				//yield(doTask);
-				yield();
-				cocos2d::log("yield after%d", n);
+
+				// Move NowXY By Relative Position
+				else if (type == "move_relative") {
+					nowX += jsonX;
+					nowY += jsonY;
+
+				}
+				
+				// Make Wall By Relative Position
+				else if (type == "solid_wall") {
+					
+					auto jsonAbsX = jsonX + nowX;
+					auto jsonAbsY = jsonY + nowY;
+
+					if (nowX < jsonAbsX) {
+						x_int = nowX;
+					}
+					else {
+						x_int = jsonAbsX;
+					}
+
+					if (nowY < jsonAbsY) {
+						y_int = nowY;
+					}
+					else {
+						y_int = jsonAbsY;
+					}
+
+					w_int = std::abs(jsonX);
+					h_int = std::abs(jsonY);
+
+					nowX += jsonX;
+					nowY += jsonY;
+
+					hasToMakeWall = true;
+				}
+
+				//set Checkpoint
+				if (map.HasMember("checkpoint")) {
+					checkpoints.emplace(
+						map["checkpoint"].GetString(), nowXY
+					);
+				}
+			}
+
+			if (hasToMakeWall) {
+
+
+				auto world = IngameScene::getb2World();
+				auto px = x_int * pxRatio;
+				auto py = y_int * pxRatio;
+				auto w = w_int * pxRatio;
+				auto h = h_int * pxRatio;
+				std::string tileName = map["tile"].GetString();
+				tileName.append(".png");
+				auto wallMasterNode = Node::create();
+				wallMasterNode->setAnchorPoint(Vec2(0.5f, 0.5f));
+				this->addChild(wallMasterNode);
+
+				// Edge shape with virtual vertex.
+				/*b2PolygonShape floorShape;
+				floorShape.SetAsBox(w / SCALE_RATIO / 2, h / SCALE_RATIO / 2);
+
+				b2FixtureDef floorFixture;
+				floorFixture.density = 1.0f;
+				floorFixture.friction = 0.5f;
+				floorFixture.restitution = 0;
+				floorFixture.shape = &floorShape;*/
+
+				b2BodyDef floorBodyDef;
+				floorBodyDef.position.Set(px / SCALE_RATIO, py / SCALE_RATIO);
+				floorBodyDef.userData = wallMasterNode;
+				floorBodyDef.type = b2BodyType::b2_staticBody;
+				auto wallBody = world->CreateBody(&floorBodyDef);
+
+				b2EdgeShape edgeShape;
+				b2FixtureDef myFixtureDef;
+				myFixtureDef.shape = &edgeShape;
+
+				b2Vec2 leftBottom(0 / SCALE_RATIO, 0 / SCALE_RATIO);
+				b2Vec2 leftTop(0 / SCALE_RATIO, h / SCALE_RATIO);
+				b2Vec2 rightBottom(w / SCALE_RATIO, 0 / SCALE_RATIO);
+				b2Vec2 rightTop(w / SCALE_RATIO, h / SCALE_RATIO);
+
+				//Edge shape for...
+				// left
+				edgeShape.Set(leftBottom, leftTop);
+				edgeShape.m_vertex0.Set(leftBottom.x, leftBottom.y - 1);
+				edgeShape.m_vertex3.Set(leftTop.x, leftTop.y + 1);
+				edgeShape.m_hasVertex0 = true;
+				edgeShape.m_hasVertex3 = true;
+				wallBody->CreateFixture(&myFixtureDef);
+
+				// top
+				edgeShape.Set(leftTop, rightTop);
+				edgeShape.m_vertex0.Set(leftTop.x - 1, leftTop.y);
+				edgeShape.m_vertex3.Set(rightTop.x + 1, leftTop.y);
+				edgeShape.m_hasVertex0 = true;
+				edgeShape.m_hasVertex3 = true;
+				wallBody->CreateFixture(&myFixtureDef);
+
+				// right
+				edgeShape.Set(rightTop, rightBottom);
+				edgeShape.m_vertex0.Set(rightTop.x, rightTop.y + 1);
+				edgeShape.m_vertex3.Set(rightBottom.x, rightBottom.y - 1);
+				edgeShape.m_hasVertex0 = true;
+				edgeShape.m_hasVertex3 = true;
+				wallBody->CreateFixture(&myFixtureDef);
+
+				// bottom
+				edgeShape.Set(leftBottom, rightBottom);
+				edgeShape.m_vertex0.Set(leftBottom.x - 1, leftBottom.y);
+				edgeShape.m_vertex3.Set(rightBottom.x + 1, rightBottom.y);
+				edgeShape.m_hasVertex0 = true;
+				edgeShape.m_hasVertex3 = true;
+				wallBody->CreateFixture(&myFixtureDef);
+				//_walls.emplace_back(wallBody);
+
+				
+				for (int i = x_int; i < x_int + w_int; i++) {
+					//_target->begin();
+					if (tileName == "none.png") break;
+					for (int j = y_int; j < y_int + h_int; j++) {
+
+						auto sp = Sprite::create(tileName);
+						//sp->retain();
+						sp->setScale(pxRatio / sp->getContentSize().width);
+						sp->setPosition((i + 1.f / 2.f) * pxRatio, (j + 1.f / 2.f) * pxRatio);
+						_batchNodeMap[tileName]->addChild(sp);
+						//sp->visit();
+						auto index = make_tuple(i, j);
+						_map[index].type = ST_void;
+						_map[index].sprite = sp;
+						//sp->setVisible(false);
+						/*
+						auto black = Sprite::create("black.png");
+						black->setScale(pxRatio / black->getContentSize().width);
+						black->setPosition(i * pxRatio + pxRatio / 2 + px, j * pxRatio + pxRatio / 2 + py);
+						_black->addChild(black);*/
+						//black->setVisible(false);
+					}
+					//_target->end();
+					cocos2d::log("yield before%d", ++n);
+					//yield(doTask);
+					yield();
+					cocos2d::log("yield after%d", n);
+				}
 			}
 		}
 		/*auto makeSurface = [this, pxRatio](const stdnElement& e, const std::string& path, float rotate) {

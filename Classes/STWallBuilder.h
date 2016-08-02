@@ -27,6 +27,19 @@ public:
 	STWallBuilder();
 	CREATE_FUNC(STWallBuilder);
 	void makeWall(const cocos2d::Rect& rect);
+
+
+	/*
+		level 안에 레벨 이름, 그다음 블록들의 향연이 이어집니다.
+		레벨 이름 안의 wall 속성 안의 것들은 배열로써,
+		종류는 블록 그리기(꼭짓점기반), 점 옮기기(절대값) 등이 있습니다.
+		type속성 :
+		1. move_checkpoint : checkpoint로 이동.
+		2. move_absolute : x, y 좌표값을 절대좌표로 이동.이동후 값을 checkpoint 속성으로 저장시킬 수 있음.
+		3. move_relative : x, y 좌표값을 상대좌표로 이동.이동후 값을 checkpoint 속성으로 저장시킬 수 있음.
+		4. solid_wall : 벽을 세움.상대좌표로 이동됨.tile속성을 추가로 줄 수 있음.이동후 값을 checkpoint 속성으로 저장시킬 수 있음.
+
+	",*/
 	void makeWalls(rapidjson::Document& j, const std::string & level);
 	bool init() override;
 	static const float surfaceGlowRatio;

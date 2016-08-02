@@ -122,7 +122,7 @@ void IngameScene::appInit()
 
 
 	// Json load
-	auto js = fu->getStringFromFile("map.json");
+	auto js = fu->getStringFromFile("map2.json");
 	_maps.Parse(js.c_str());
 
 
@@ -435,12 +435,12 @@ void IngameScene::gameInterface()
 	
 	touchManager->setOrder(leftButton, 10);
 	auto leftOn = [this]()->void {
-		endDash();
+		//endDash();
 		_checkMoveButton = true;
 		_isRight = false;
 	};
 	auto rightOn = [this]()->void {
-		endDash();
+		//endDash();
 		_checkMoveButton = true;
 		_isRight = true;
 	};
@@ -755,20 +755,68 @@ void IngameScene::initializePhysics(const std::string& level)
 
 
 	//----------------------------------
-	// Character ContactListener
+	// Character ContactListener Collision Callback
 	//----------------------------------
+	enum ContactDirection {
+		C_LEFT,
+		C_RIGHT,
+		C_UP,
+		C_DOWN
+	};
+	auto isNormalDirection = [](const b2WorldManifold& worldManifold, ContactDirection direction)->bool {
+		auto similar = [](float value, int a)->bool {
+			switch (a) {
+			case 1:
+				return value > 0.999f;
+			case 0:
+				return value < 0.001f && value > -0.001f;
+			case -1:
+				return value < -0.999f;
+			default:
+				break;
+			}
+			return false;
+		};
+		
+		switch (direction) {
+		case C_LEFT:
+			return
+				similar(worldManifold.normal.x, -1) &&
+				similar(worldManifold.normal.y, 0);
+		case C_RIGHT:
+			return
+				similar(worldManifold.normal.x, 1) &&
+				similar(worldManifold.normal.y, 0);
+
+		case C_UP:
+			return
+				similar(worldManifold.normal.x, 0) &&
+				similar(worldManifold.normal.y, 1);
+
+		case C_DOWN:
+			return
+				similar(worldManifold.normal.x, 0) &&
+				similar(worldManifold.normal.y, -1);
+
+		default:
+			break;
+		}
+		return false;
+	};
+
 	_cl_p = std::make_shared<STContactListener>(this);
 	world->SetContactListener(_cl_p.get());
 
 
-	_cl_p->setBeginContact(_charBody, [this](b2Contact* contact, b2Fixture* other) {
+	_cl_p->setBeginContact(_charBody, [this, isNormalDirection](b2Contact* contact, b2Fixture* other) {
 		b2WorldManifold worldManifold;
 		contact->GetWorldManifold(&worldManifold);
 		cocos2d::log("begContact normalX:%.2f, normalY:%.2f", worldManifold.normal.x,
 			worldManifold.normal.y);
-		if (worldManifold.normal.y == 1.0f) {
+		if (isNormalDirection(worldManifold, C_UP)) {
 			_floorFixtures.emplace(other);
 		}
+	
 
 		/*// if hit Ground!
 		if (impulse->normalImpulses[0] >= 0.05f &&
@@ -810,33 +858,35 @@ void IngameScene::initializePhysics(const std::string& level)
 	});
 
 	_cl_p->setPostSolve(_charBody,
-		[this](b2Contact* contact, const b2ContactImpulse* impulse, b2Fixture* other) {
+		[this, isNormalDirection](b2Contact* contact, const b2ContactImpulse* impulse, b2Fixture* other) {
 
 		b2WorldManifold worldManifold;
 		contact->GetWorldManifold(&worldManifold);
 
 		_hitPower = impulse->normalImpulses[0];
-		cocos2d::log("nX:%.2f, nY:%.2f, inp0:%.2f, inp1:%.2f, itp0:%.2f, itp1:%.2f",
+		if (_hitPower >= 0.05f) {
+			
+		}
+		/*cocos2d::log("nX:%.2f, nY:%.2f, inp0:%.2f, inp1:%.2f, itp0:%.2f, itp1:%.2f",
 			worldManifold.normal.x,
 			worldManifold.normal.y,
 			impulse->normalImpulses[0],
 			impulse->normalImpulses[1], // useless. -107374176.00
 			impulse->tangentImpulses[0], // useless. -0.00
-			impulse->tangentImpulses[1]); // useless. -107374176.00
+			impulse->tangentImpulses[1]); // useless. -107374176.00*/
 		// if hit Ground!
 		if (impulse->normalImpulses[0] >= 0.05f &&
-			worldManifold.normal.y == 1.0f &&
-			worldManifold.normal.x == 0.0f) {
+			isNormalDirection(worldManifold, C_UP)) {
 
 			
 				
-											  // power max : 0.2f
+			// power max : 0.2f
 			float power = impulse->normalImpulses[0];
 			if (power >= 0.2f) {
 				power = 0.2f;
 			}
 			//_characterHitGroundYes = true;
-			characterHitGround(power);
+			/*apHookActionManager*/characterHitGround(power);
 
 
 
@@ -844,8 +894,7 @@ void IngameScene::initializePhysics(const std::string& level)
 		// hit walls if character is moving left
 		else if ((impulse->normalImpulses[0] >= 0.01f ||
 			impulse->normalImpulses[1] >= 0.01f) &&
-			worldManifold.normal.y == 0.0f &&
-			worldManifold.normal.x == 1.0f) {
+			isNormalDirection(worldManifold, C_RIGHT)) {
 			characterHitLeftWall(impulse->normalImpulses[0]);
 			//_characterHitLeftWallYes = true;
 		}
@@ -853,8 +902,7 @@ void IngameScene::initializePhysics(const std::string& level)
 		// hit walls if character is moving right
 		else if ((impulse->normalImpulses[0] >= 0.01f ||
 			impulse->normalImpulses[1] >= 0.01f) &&
-			worldManifold.normal.y == 0.0f &&
-			worldManifold.normal.x == -1.0f) {
+			isNormalDirection(worldManifold, C_LEFT)) {
 
 			characterHitRightWall(impulse->normalImpulses[0]);
 			//_characterHitRightWallYes = true;
@@ -867,6 +915,8 @@ void IngameScene::initializePhysics(const std::string& level)
 		contact->GetWorldManifold(&worldManifold);
 		cocos2d::log("endContact normalX:%.2f, normalY:%.2f", worldManifold.normal.x,
 			worldManifold.normal.y);
+
+		//remove fixture from floor fixtures set.
 		if (_floorFixtures.find(other) != _floorFixtures.end()){
 			_floorFixtures.erase(other);
 		}
@@ -961,7 +1011,7 @@ void IngameScene::initializePhysics(const std::string& level)
 			}
 			backgroundNode->setPosition(d, 0);
 		}
-		_debugBox->get() << "x:" << _masterField->getPosition().x << " y:" << _masterField->getPosition().y << _debugBox->push;
+		//_debugBox->get() << "x:" << _masterField->getPosition().x << " y:" << _masterField->getPosition().y << _debugBox->push;
 		//make background move.
 	});
 	

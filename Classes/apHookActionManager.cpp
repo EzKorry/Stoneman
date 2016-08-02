@@ -36,22 +36,14 @@ void apHookActionManager::addAction(const std::string& hook, const std::string& 
 std::shared_ptr<apHookActionManager> apHookActionManager::_sp = nullptr;
 
 
-
+/*
 std::shared_ptr<apHookActionManager> apHookActionManager::runHook(const std::string& hook) {
 
-	// if hook found,
-	if(_actions.find(hook) != _actions.end()) {
-
-		// run each function.
-		for(auto& item : _actions[hook]) {
-			item.second();
-		}
-	}
-	return _sp;
-}
+	
+}*/
 
 // remove hook.
-std::shared_ptr<apHookActionManager> apHookActionManager::removeHook(const std::string& hook) {
+/*std::shared_ptr<apHookActionManager> apHookActionManager::removeHook(const std::string& hook) {
 
 	// if hook found,
 	if(_actions.find(hook) != _actions.end()) {
@@ -60,9 +52,10 @@ std::shared_ptr<apHookActionManager> apHookActionManager::removeHook(const std::
 	}
 	return _sp;
 
-}
+}*/
 
 // remove Action.
+/*
 std::shared_ptr<apHookActionManager> apHookActionManager::removeAction(const std::string& hook, const std::string& tag) {
 	auto actionIt = _actions.find(hook);
 	if(actionIt != _actions.end()) {
@@ -74,7 +67,7 @@ std::shared_ptr<apHookActionManager> apHookActionManager::removeAction(const std
 	}
 	return _sp;
 }
-
+*/
 apHookActionManager::apHookActionManager()  = default;
 
 std::string apHookActionManager::_d_all_hook()
@@ -88,4 +81,14 @@ std::string apHookActionManager::_d_all_hook()
 
 apHookActionManager::~apHookActionManager() = default;
 
-} /* namespace arphomod */
+apActionFunc::apActionFunc()
+{
+}
+
+apActionFunc::~apActionFunc()
+{
+}
+
+ } /* namespace arphomod */
+
+

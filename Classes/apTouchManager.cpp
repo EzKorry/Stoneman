@@ -64,7 +64,7 @@ void APTouchManager::addHook(cocos2d::Node * node, APTouchType timing, const std
 	if (_amp == nullptr) {
 		_amp = apHookActionManager::getInstance();
 	}
-	_amp->addHook(hook);
+	//_amp->addHook(hook);
 	_d[node].hook.emplace(timing, hook);
 }
 
