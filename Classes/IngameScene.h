@@ -8,9 +8,8 @@
 #ifndef INGAMESCENE_H_
 #define INGAMESCENE_H_
 
-#define SCALE_RATIO 32.0
-#define M_PI 3.14159265358979323846
 
+#include "STMacros.h"
 #include <cocos2d.h>
 #include "json/rapidjson.h"
 #include "json/document.h"
@@ -24,6 +23,8 @@ using namespace arphomod;
 
 
 // character width:30px, height:48px.
+
+
 
 enum EntityCategory {
 	WALL = 0x0001,
@@ -42,8 +43,11 @@ enum ScheduleUpdateFuncPriority {
 class STCamera;
 class GLESDebugDraw;
 class STWallBuilder;
+class STBox2dNode;
+
 namespace arphomod {
 	class DebugBox;
+	struct FrameRange;
 }
 class IngameScene : public cocos2d::Scene {
 private:
@@ -71,6 +75,20 @@ private:
 		Color4F switchColor(const Color4B& color) {
 			return Color4F(color);
 		}
+		/*
+
+		// get Sprite Frames to use implementing animation.
+		// it should be called after spritecache->addSpriteFramesWithFile("something.plist");
+		cocos2d::Vector<SpriteFrame*> getAnimationFrame(const char *format, int start, int end);
+
+		// get Sprite Frames to use implementing animation.
+		// it should be called after spritecache->addSpriteFramesWithFile("something.plist");
+		cocos2d::Vector<SpriteFrame*> getAnimationFrame(const char *format, const FrameRange& frameRange);
+
+		// get Sprite Frames to use implementing animation.
+		// it should be called after spritecache->addSpriteFramesWithFile("something.plist");
+		cocos2d::Animation* getAnimation(const char *format, const FrameRange& frameRange);
+		*/
 
 		Util();
 		~Util();
@@ -104,6 +122,8 @@ private:
 			}
 			cocos2d::log("UpdateCaller-changeFunc - key doesn't exist!");
 		}
+
+		
 
 		void delFunc(int priority);
 		UpdateCaller();
@@ -189,19 +209,22 @@ private:
 	// box2d world
 	static std::shared_ptr<b2World> world;
 
-	//float powerMultiplier{ 0.005f };
 	float _jumpPower{ 2.0f };
 	float _airResistance{ 0.02f }, _originAirResistance{ 0.0f }, _maxAirResistance{ 1.5f }, _nowMaxAirResistance{ 0.0f };
 	float _movePower{ 10.0f };
-	float _boxWidth{ 40.0f }, _boxHeight{ 64.0f }, _boxDensity{ 0.01f };
+
+	// box Width and height are going to be initialized by appInit();
+	float _boxWidth{ 0.0f }, _boxHeight{ 0.0f }, _boxDensity{ 0.01f };
 	float _cameraMoveSpeed{ 0.3f };
 	float _dashPower{ 8.0f }, _dashAirRatio{ 0.1f }, _dashAngle{ 0.06f * (float)M_PI}, _dashDuration{ 0.3f };
 	bool _isDashing = false;
 	float _gravityScaleWhenJump{ 0.3f };
+
 	// camera viberation.
 	float _cameraVRatio{ 50.0f };
 	float _cameraVDuration{ 5.0f };
 	const float _dashWallCondition{ 0.2f };
+
 	// for left wall hit
 	float _dashWallBounceRadian{ 0.05f * (float)M_PI };
 	float _dashWallBouncePower{ 6.0f };
@@ -222,6 +245,7 @@ private:
 	STWallBuilder* _wallBuilder;
 	
 	// localScheduler for slow motion.
+	// It affects by "Pause", or slow motion.
 	Scheduler* _localScheduler{ nullptr };
 	ActionManager* _localActionManager{ nullptr };
 
@@ -247,10 +271,24 @@ private:
 	bool _checkJumpHighest{ false };
 	cocos2d::Vec2 _nowTextPos { Vec2(50.0f, 15.0f) };
 	cocos2d::Vec2 _vibrationOffset {Vec2::ZERO };
+
+	// main character sprite and animation.
 	cocos2d::Sprite* _sp { nullptr };
+	std::unordered_map<std::string, FrameRange> _mcFrameRanges;
+	std::unordered_map<std::string, std::unordered_map< int, std::string >> _mcFrameEvents;
+	std::string _mcFramePath;
+
+	// box2d main character body
+	b2Body* _charBody{ nullptr };
+
+	// main character node. It contains character body and animation.
+	STBox2dNode* _characterNode{ nullptr };
+
 	cocos2d::Node* _masterField { nullptr };
 	STCamera* _camera { nullptr };
-	b2Body* _charBody { nullptr };
+
+	
+
 	b2CircleShape ballShape;
 	b2BodyDef ballBodyDef;
 #if  (CC_TARGET_PLATFORM == CC_PLATFORM_WIN32)

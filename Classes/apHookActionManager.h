@@ -186,7 +186,7 @@ public:
 		// if hook found,
 		auto& list = Actions<std::function<TFunctionType>>::list;
 		auto actionIt = list.find(std::forward<TString1>(hook));
-		if (actionIt != _actions.end()) {
+		if (actionIt != list.end()) {
 			auto& map = (*actionIt).second;
 			auto funcIt = map.find(std::forward<TString2>(tag));
 			if (funcIt != map.end()) {
@@ -215,7 +215,7 @@ private:
 	// key: hook.
 	// value: key: actionTag.
 	//        value: action function
-	apHookActionContainer _actions;
+	//apHookActionContainer _actions;
 
 	static shared_ptr<apHookActionManager> _sp;
 

@@ -71,12 +71,12 @@ std::shared_ptr<apHookActionManager> apHookActionManager::removeAction(const std
 apHookActionManager::apHookActionManager()  = default;
 
 std::string apHookActionManager::_d_all_hook()
-{
+{/*
 	stringstream ss;
 	for (auto& item : _actions) {
 		ss << item.first << ", ";
-	}
-	return ss.str();
+	}*/
+	return std::string("");
 }
 
 apHookActionManager::~apHookActionManager() = default;

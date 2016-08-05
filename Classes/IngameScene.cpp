@@ -17,6 +17,8 @@
 #include "STWallBuilder.h"
 #include "apAsyncTaskManager.h"
 #include "DebugBox.h"
+#include "STBox2dNode.h"
+#include "apAnimationManager.h"
 #include <sstream>
 #include <future>
 #include <fstream>
@@ -44,13 +46,6 @@ bool IngameScene::init() {
 
 	scheduleUpdate();
 	apHookActionManager::getInstance()->runHook("game_start");
-	/*
-	initializeEffectManager();
-	initializePhysics();
-	debugVariable();
-	gameInterface();
-	animationTest();
-	*/
 	
 	
 	return true;
@@ -109,7 +104,7 @@ void IngameScene::appInit()
 	_localScheduler = new (std::nothrow) Scheduler();
 	// action manager
 	_localActionManager = new (std::nothrow) ActionManager();
-	_localScheduler->scheduleUpdate(_localActionManager, Scheduler::PRIORITY_SYSTEM, false);
+	_localScheduler->scheduleUpdate(_localActionManager, Scheduler::PRIORITY_NON_SYSTEM_MIN, false);
 
 	// updateCaller initialize.
 	_localUpdater = make_shared<UpdateCaller>();
@@ -176,12 +171,20 @@ void IngameScene::organizeScene()
 		drawNode->drawSolidRect(Vec2::ZERO, Vec2(size.width, size.height), util.switchColor(_colors["default"]));
 		_backgroundField->addChild(drawNode, 0, "default_background");
 	};
+	//show Logo
 	auto showLogo = [this]() {
 		auto logo = Sprite::create("elvanovLogo2.png");
-		util.resizeSprite(logo, 480, true);
+		logo->setOpacity(0);
+		util.resizeSprite(logo, 320, true);
 		auto visibleSize = Director::getInstance()->getVisibleSize();
 		logo->setPosition(visibleSize.width / 2.f,visibleSize.height / 2.f);
 		_masterField->addChild(logo, 1, "logo");
+
+		auto delay1 = DelayTime::create(1);
+		auto fadeTo = FadeTo::create(2, 180);
+		auto sequence = Sequence::create(delay1, fadeTo, nullptr);
+		logo->runAction(sequence);
+
 	};
 	actionManager->addAction("game_start", "show_logo", showLogo);
 	actionManager->addAction("game_start", "default_background", defaultBackground);
@@ -191,7 +194,7 @@ void IngameScene::organizeScene()
 		scheduleOnce([this](float delta)->void {
 			_masterField->removeChildByName("logo");
 			apHookActionManager::getInstance()->runHook("show_stage_select");
-		}, 1.f, "delLogo");
+		}, 5.f, "delLogo");
 	};
 	actionManager->addAction("game_start", "del_logo", std::move(delLogo));
 
@@ -395,8 +398,8 @@ void IngameScene::animationTest()
 	auto animation = Animation::createWithSpriteFrames(frames, 1 / 15.f, 1);
 	auto charanimationspr = Sprite::createWithSpriteFrame(frames.front());
 	_masterField->addChild(charanimationspr);
-	charanimationspr->setPosition(100, 100);
-	charanimationspr->runAction(RepeatForever::create(Animate::create(animation)));
+	charanimationspr->setPosition(300, 300);
+	//charanimationspr->runAction(RepeatForever::create(Animate::create(animation)));
 
 
 	spritecache->addSpriteFramesWithFile("charThree.plist");
@@ -404,9 +407,9 @@ void IngameScene::animationTest()
 	auto animation2 = Animation::createWithSpriteFrames(frames2, 1 / 15.f, 1);
 	auto charanimationspr2 = Sprite::createWithSpriteFrame(frames2.front());
 	_masterField->addChild(charanimationspr2);
-	charanimationspr2->setPosition(200, 100);
+	charanimationspr2->setPosition(300, 400);
 	charanimationspr2->setScale(_boxWidth / charanimationspr2->getContentSize().width);
-	charanimationspr2->runAction(RepeatForever::create(Animate::create(animation2)));
+	//charanimationspr2->runAction(RepeatForever::create(Animate::create(animation2)));
 
 
 }
@@ -550,7 +553,6 @@ void IngameScene::gameInterface()
 		case K::KEY_S:
 			_keyCount++;
 			rightOn();
-
 			break;
 		case K::KEY_K:
 			doDash();
@@ -562,6 +564,14 @@ void IngameScene::gameInterface()
 			break;
 
 		}
+		/*auto animationWalk = util.getAnimation("chartest%04d", _mcFrameRanges["walk"]);
+		runLocalAction(_sp, Animate::create(animationWalk));
+
+		static_cast<Sprite*>(_sp)->setSpriteFrame(frameToDisplay);
+		*/
+
+		auto aniManager = apAnimationManager::getInstance();
+		aniManager->playAnimation(_sp, "walk", false);
 		//cocos2d::log("Key with keycode %d pressed", keyCode);
 	};
 	keyboardListener->onKeyReleased = [this, cancelMove, leftOn, rightOn](EventKeyboard::KeyCode keyCode, Event* event) {
@@ -722,10 +732,82 @@ void IngameScene::initializePhysics(const std::string& level)
 
 
 	// CHARACTER BOX2D PHYSICS!
-	_sp = Sprite::create("character.png");
-	_sp->setScaleX(_boxWidth / _sp->getContentSize().width);
-	_sp->setScaleY(_boxHeight / _sp->getContentSize().height);
-	_masterField->addChild(_sp);
+	// actual sprite box width: 80px, height : 128px.
+
+	// set MainCharacter animation Frames
+	_mcFrameRanges["walk"] = FrameRange(0, 19);
+	_mcFrameEvents["walk"][5] = "power_frame_event";
+	_mcFramePath = "charTest1-1.plist";
+	
+	auto spritecache = SpriteFrameCache::getInstance();
+	//spritecache->addSpriteFramesWithFile(_mcFramePath);
+
+	//auto animationWalk = util.getAnimation("chartest%04d", _mcFrameRanges["walk"]);
+	//animationWalk->getFrames().front()->
+	//auto& animationWalkFrames = animationWalk->getFrames();
+	
+
+
+	//make animation
+	auto aniManager = apAnimationManager::getInstance();
+	aniManager->connectWithScheduler(_localScheduler);
+	aniManager->addNewSpriteSheet(_mcFramePath);
+	aniManager->specifyAnimation("chartest%04d", _mcFrameRanges["walk"], "walk");
+	for (auto& item : _mcFrameEvents) {
+		auto& animationName = item.first;
+		for (auto& item2 : item.second) {
+			auto& frame = item2.first;
+			auto& hookName = item2.second;
+			
+			aniManager->setFrameEvent(animationName, frame, hookName);
+
+		}
+	}
+
+
+
+
+
+
+
+
+
+	// set hook event at each frame's userInfo.
+	/*
+	for (auto& item : _mcFrameEvents) {
+		auto spriteFrame = animationWalkFrames.at(item.first);
+		auto userInfo = spriteFrame->getUserInfo();
+		userInfo["hook_name"] = item.second;
+		animationWalkFrames.at(item.first)->setUserInfo(userInfo);
+	}
+	*/
+	// set event listener and dispatch to hookactionmanager to be invoked.
+	/*
+	auto listenerAnimationFrameDisplayed = EventListenerCustom::create(AnimationFrameDisplayedNotification, [](EventCustom* event) {
+		auto info = static_cast<AnimationFrame::DisplayedEventInfo*>(event->getUserData());
+		auto hookActionManager = apHookActionManager::getInstance();
+		if (info->userInfo->find("hook_name") != info->userInfo->end()) {
+			const auto& hook_name = info->userInfo->at("hook_name").asString();
+			hookActionManager->runHook(hook_name);
+		}
+	});
+	_eventDispatcher->addEventListenerWithFixedPriority(listenerAnimationFrameDisplayed, 1);
+	*/
+	auto hookActionManager = apHookActionManager::getInstance();
+	hookActionManager->addAction("power_frame_event", "gg", [this]() {
+		_debugBox->get() << "frame 5 reached!!!" << DebugBox::push;
+	});
+	
+	_sp = aniManager->createSprite("walk");
+	//runLocalAction(_sp, RepeatForever::create(Animate::create(animationWalk)));
+	//runLocalAction(_sp, Animate::create(animationWalk));
+	//_sp->runAction(RepeatForever::create(Animate::create(animationWalk)));
+	_sp->setScale(0.375f);
+	//_sp->setScaleX(_boxWidth / _sp->getContentSize().width);
+	//_sp->setScaleY(_boxHeight / _sp->getContentSize().height);
+	//_masterField->addChild(_sp);
+	auto moveRight = MoveBy::create(1, Vec2(50, 0));
+	runLocalAction(_sp, moveRight);
 
 	b2PolygonShape charShape;
 	// box2d의 setbox는 가로세로가 아니라 반지름이랑 개념이 비슷하다. 가운데에서부터 한변 까지의 길이임. 그래서 /2를 해줌.
@@ -742,15 +824,22 @@ void IngameScene::initializePhysics(const std::string& level)
 	
 	auto& startCoord = _maps["level"][_level.c_str()]["start"];
 	b2BodyDef charBodyDef;
-	charBodyDef.position.Set((startCoord["x"].GetInt() * OneBlockPx) / SCALE_RATIO, (startCoord["y"].GetInt() * OneBlockPx) / SCALE_RATIO);
-	charBodyDef.userData = _sp;
+	//charBodyDef.position.Set((startCoord["x"].GetInt() * OneBlockPx) / SCALE_RATIO, (startCoord["y"].GetInt() * OneBlockPx) / SCALE_RATIO);
+	//charBodyDef.userData = _sp;
 	charBodyDef.fixedRotation = true;
 	charBodyDef.type = b2BodyType::b2_dynamicBody;
 
 	_charBody = world->CreateBody(&charBodyDef);
 	_charBody->CreateFixture(&charFixtureDef);
 
+	_characterNode = STBox2dNode::createWithBox2dBody(_charBody);
+	_characterNode->addChild(_sp);
+	_masterField->addChild(_characterNode);
+	_characterNode->setBodyPositionBlock(Vec2(startCoord["x"].GetInt(), startCoord["y"].GetInt()));
+	_charBody->SetUserData(_characterNode);
+
 	// origin Air resistance setting.
+	
 	_originAirResistance = _airResistance;
 
 
@@ -996,8 +1085,8 @@ void IngameScene::initializePhysics(const std::string& level)
 		// camera update with vibration offset. 4
 		auto camPos = _camera->getCameraPosition();
 		//_camera->setVibrationOffset(_vibrationOffset);
-		auto posToMove = _sp->getPosition();
-		_camera->setCameraPosition(camPos + (_sp->getPosition() - camPos) * _cameraMoveSpeed);
+		auto posToMove = _characterNode->getPosition();
+		_camera->setCameraPosition(camPos + (posToMove - camPos) * _cameraMoveSpeed);
 		//_camera->updateCamera(delta);
 
 
@@ -1014,6 +1103,16 @@ void IngameScene::initializePhysics(const std::string& level)
 		//_debugBox->get() << "x:" << _masterField->getPosition().x << " y:" << _masterField->getPosition().y << _debugBox->push;
 		//make background move.
 	});
+
+
+	//drawnode polygon test 
+	auto dn = DrawNode::create();
+	_masterField->addChild(dn);
+	dn->setPosition(Vec2(300, 300));
+	Vec2 verts[5] = { {0,100},{100,100}, {50,50}, {100,0},{0,50} };
+	dn->drawPolygon(verts, 5, Color4F(1.f, 1.f, 1.f, 1.f), 0, Color4F(0, 0, 0, 0));
+
+
 	
 }
 void IngameScene::initializeEffectManager()
@@ -1199,7 +1298,7 @@ void IngameScene::characterHitGround(float power) {
 	cocos2d::log("hit the ground power is %f", power);
 	boost::coroutines::symmetric_coroutine<void>::call_type gogo(
 		[this](boost::coroutines::symmetric_coroutine<void>::yield_type& yield) {
-		_effectGen->generateEffect(_effectConf, _sp->getPosition().x, _sp->getPosition().y - _boxHeight / 2);
+		_effectGen->generateEffect(_effectConf, _characterNode->getPosition().x, _characterNode->getPosition().y - _boxHeight / 2);
 	});
 	apAsyncTaskManager::getInstance()->addTask(std::move(gogo));
 	
@@ -1343,7 +1442,32 @@ void IngameScene::UpdateCaller::initWithScheduler(cocos2d::Scheduler* s, const s
 	};
 	s->schedule(f, this, 0, false, key);
 }
+/*
+cocos2d::Vector<SpriteFrame*> IngameScene::Util::getAnimationFrame(const char * format, int start, int end)
+{
+	auto spritecache = SpriteFrameCache::getInstance();
+	Vector<SpriteFrame*> animFrames;
+	char str[100];
+	for (int i = start; i <= end; i++)
+	{
+		sprintf(str, format, i);
+		animFrames.pushBack(spritecache->getSpriteFrameByName(str));
+	}
+	return animFrames;
+}
 
+cocos2d::Vector<SpriteFrame*> IngameScene::Util::getAnimationFrame(const char * format, const FrameRange & frameRange)
+{
+	return getAnimationFrame(format, frameRange.start, frameRange.end);
+}
+
+cocos2d::Animation * IngameScene::Util::getAnimation(const char * format, const FrameRange & frameRange)
+{
+	auto frames = getAnimationFrame(format, frameRange);
+	auto animation = Animation::createWithSpriteFrames(frames, 1 / 15.f, 1);
+	return animation;
+}
+*/
 void IngameScene::UpdateCaller::delFunc(int priority)
 {
 
@@ -1362,4 +1486,5 @@ IngameScene::UpdateCaller::UpdateCaller()
 IngameScene::UpdateCaller::~UpdateCaller()
 {
 }
+
 
