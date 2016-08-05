@@ -8,6 +8,8 @@
 /proj.android/
 /libboost/
 cryptopp563/
+/boost_1_57_0/
+/boost_1_59_0/
 *.zip
 
 # Created by https://www.gitignore.io/api/android,java,c++

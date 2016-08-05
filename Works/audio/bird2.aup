@@ -1,0 +1,37 @@
+<?xml version="1.0" standalone="no" ?>
+<!DOCTYPE project PUBLIC "-//audacityproject-1.3.0//DTD//EN" "http://audacity.sourceforge.net/xml/audacityproject-1.3.0.dtd" >
+<project xmlns="http://audacity.sourceforge.net/xml/" projname="bird2_data" version="1.3.0" audacityversion="2.1.1" sel0="0.0000000000" sel1="0.0000000000" vpos="0" h="0.0000000000" zoom="86.1328125000" rate="44100.0" snapto="off" selectionformat="hh:mm:ss + milliseconds" frequencyformat="Hz" bandwidthformat="octaves">
+	<tags/>
+	<wavetrack name="MAFX001 soft wind chaffinch wren bees" channel="0" linked="1" mute="0" solo="0" height="150" minimized="0" isSelected="1" rate="96000" gain="1.0" pan="0.0">
+		<waveclip offset="0.00000000">
+			<sequence maxsamples="262144" sampleformat="262159" numsamples="568561">
+				<waveblock start="0">
+					<simpleblockfile filename="e00005ec.au" len="251777" min="-0.064324" max="0.062757" rms="0.00845"/>
+				</waveblock>
+				<waveblock start="251777">
+					<simpleblockfile filename="e00001fc.au" len="262144" min="-0.049921" max="0.049775" rms="0.007723"/>
+				</waveblock>
+				<waveblock start="513921">
+					<simpleblockfile filename="e0000884.au" len="54640" min="-0.000551" max="0.00037" rms="0.000087"/>
+				</waveblock>
+			</sequence>
+			<envelope numpoints="0"/>
+		</waveclip>
+	</wavetrack>
+	<wavetrack name="MAFX001 soft wind chaffinch wren bees" channel="1" linked="0" mute="0" solo="0" height="150" minimized="0" isSelected="1" rate="96000" gain="1.0" pan="0.0">
+		<waveclip offset="0.00000000">
+			<sequence maxsamples="262144" sampleformat="262159" numsamples="568561">
+				<waveblock start="0">
+					<simpleblockfile filename="e0000146.au" len="251777" min="-0.041644" max="0.042126" rms="0.00566"/>
+				</waveblock>
+				<waveblock start="251777">
+					<simpleblockfile filename="e000000a.au" len="262144" min="-0.03267" max="0.032023" rms="0.004409"/>
+				</waveblock>
+				<waveblock start="513921">
+					<simpleblockfile filename="e00000c4.au" len="54640" min="-0.000615" max="0.000585" rms="0.000097"/>
+				</waveblock>
+			</sequence>
+			<envelope numpoints="0"/>
+		</waveclip>
+	</wavetrack>
+</project>

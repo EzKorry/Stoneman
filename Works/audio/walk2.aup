@@ -1,0 +1,45 @@
+<?xml version="1.0" standalone="no" ?>
+<!DOCTYPE project PUBLIC "-//audacityproject-1.3.0//DTD//EN" "http://audacity.sourceforge.net/xml/audacityproject-1.3.0.dtd" >
+<project xmlns="http://audacity.sourceforge.net/xml/" projname="walk2_data" version="1.3.0" audacityversion="2.1.1" sel0="0.0000000000" sel1="0.3035000000" vpos="0" h="0.0000000000" zoom="1617.6162347561" rate="44100.0" snapto="off" selectionformat="hh:mm:ss + milliseconds" frequencyformat="Hz" bandwidthformat="octaves">
+	<tags/>
+	<wavetrack name="footstep" channel="2" linked="0" mute="0" solo="0" height="150" minimized="0" isSelected="1" rate="48000" gain="0.501187" pan="0.0">
+		<waveclip offset="0.00000000">
+			<sequence maxsamples="262144" sampleformat="262159" numsamples="14568">
+				<waveblock start="0">
+					<simpleblockfile filename="e0000389.au" len="14568" min="-0.323872" max="0.343714" rms="0.014425"/>
+				</waveblock>
+			</sequence>
+			<envelope numpoints="0"/>
+		</waveclip>
+	</wavetrack>
+	<wavetrack name="FS Wood Civilian Crouch N03" channel="0" linked="1" mute="1" solo="0" height="150" minimized="0" isSelected="1" rate="96000" gain="1.0" pan="0.0">
+		<waveclip offset="0.00000000">
+			<sequence maxsamples="262144" sampleformat="262159" numsamples="16270">
+				<waveblock start="0">
+					<simpleblockfile filename="e0000b3d.au" len="16270" min="-0.106178" max="0.17442" rms="0.014442"/>
+				</waveblock>
+			</sequence>
+			<envelope numpoints="0"/>
+		</waveclip>
+	</wavetrack>
+	<wavetrack name="FS Wood Civilian Crouch N03" channel="1" linked="0" mute="1" solo="0" height="150" minimized="0" isSelected="1" rate="96000" gain="1.0" pan="0.0">
+		<waveclip offset="0.00000000">
+			<sequence maxsamples="262144" sampleformat="262159" numsamples="16270">
+				<waveblock start="0">
+					<simpleblockfile filename="e0000533.au" len="16270" min="-0.125499" max="0.172702" rms="0.014177"/>
+				</waveblock>
+			</sequence>
+			<envelope numpoints="0"/>
+		</waveclip>
+	</wavetrack>
+	<wavetrack name="footstep" channel="2" linked="0" mute="0" solo="0" height="150" minimized="0" isSelected="1" rate="48000" gain="1.0" pan="0.0">
+		<waveclip offset="0.00000000">
+			<sequence maxsamples="262144" sampleformat="262159" numsamples="11869">
+				<waveblock start="0">
+					<simpleblockfile filename="e0000414.au" len="11869" min="-0.048993" max="0.040807" rms="0.004182"/>
+				</waveblock>
+			</sequence>
+			<envelope numpoints="0"/>
+		</waveclip>
+	</wavetrack>
+</project>

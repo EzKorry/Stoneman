@@ -1,0 +1,31 @@
+06-02 21:58:40.371 22413-22413/com.flowground.stoneman E/art: dlopen("/data/app/com.flowground.stoneman-1/lib/arm/libc++_shared.so", RTLD_LAZY) failed: dlopen failed: unknown reloc type 160 @ 0xaf884f70 (2187)
+06-02 21:58:40.401 22413-22413/com.flowground.stoneman D/AndroidRuntime: Shutting down VM
+06-02 21:58:40.401 22413-22413/com.flowground.stoneman E/AndroidRuntime: FATAL EXCEPTION: main
+                                                                         Process: com.flowground.stoneman, PID: 22413
+                                                                         java.lang.UnsatisfiedLinkError: dlopen failed: unknown reloc type 160 @ 0xaf884f70 (2187)
+                                                                             at java.lang.Runtime.loadLibrary(Runtime.java:371)
+                                                                             at java.lang.System.loadLibrary(System.java:989)
+
+
+06-02 22:03:25.471 25953-25953/com.flowground.stoneman E/art: dlopen("/data/app/com.flowground.stoneman-1/lib/arm/libcocos2dcpp.so", RTLD_LAZY) failed: dlopen failed: could not load library "libc++_shared.so" needed by "libcocos2dcpp.so"; caused by unknown reloc type 160 @ 0xa1157f70 (2187)
+06-02 22:03:25.481 25953-25953/com.flowground.stoneman D/AndroidRuntime: Shutting down VM
+06-02 22:03:25.481 25953-25953/com.flowground.stoneman E/AndroidRuntime: FATAL EXCEPTION: main
+                                                                        Process: com.flowground.stoneman, PID: 25953
+                                                                        java.lang.UnsatisfiedLinkError: dlopen failed: could not load library "libc++_shared.so" needed by "libcocos2dcpp.so"; caused by unknown reloc type 160 @ 0xa1157f70 (2187)
+
+"C:\crystax-ndk-10.3.1\ndk-build" -C C:\cocos2d-x-project\Stoneman\proj.android-studio\app -j4 APP_ABI="armeabi" NDK_TOOLCHAIN=arm-linux-androideabi-clang3.7 NDK_MODULE_PATH=C:\cocos2d-x-project\Stoneman\proj.android-studio\../cocos2d;C:\cocos2d-x-project\Stoneman\proj.android-studio\../cocos2d/cocos;C:\cocos2d-x-project\Stoneman\proj.android-studio\../cocos2d/external NDK_TOOLCHAIN_VERSION=clang3.7 NDK_DEBUG=1
+"C:\crystax-ndk-10.3.1\ndk-build" -C C:\cocos2d-x-project\Stoneman\proj.android-studio\app -j4 APP_ABI="armeabi" NDK_TOOLCHAIN=arm-linux-androideabi-5 NDK_MODULE_PATH=C:\cocos2d-x-project\Stoneman\proj.android-studio\../cocos2d;C:\cocos2d-x-project\Stoneman\proj.android-studio\../cocos2d/cocos;C:\cocos2d-x-project\Stoneman\proj.android-studio\../cocos2d/external NDK_TOOLCHAIN_VERSION=5 NDK_DEBUG=1
+
+bash ./build/tools/build-boost.sh --abis=armeabi --version=1.59.0
+--stdlibs=gnu-5 ./sources/boost
+"C:\android-ndk-r11c\ndk-build" -C C:/cocos2d-x-project/Stoneman/proj.android-studio/app -j4 APP_ABI="armeabi" NDK_MODULE_PATH=C:/cocos2d-x-project/Stoneman/proj.android-studio/../cocos2d;C:/cocos2d-x-project/Stoneman/proj.android-studio/../cocos2d/cocos;C:/cocos2d-x-project/Stoneman/proj.android-studio/../cocos2d/external NDK_TOOLCHAIN_VERSION=4.9 NDK_DEBUG=1
+"C:\crystax-ndk-10.3.1\ndk-build" -C C:/cocos2d-x-project/Stoneman/proj.android-studio/app -j4 APP_ABI="armeabi" NDK_MODULE_PATH=C:/cocos2d-x-project/Stoneman/proj.android-studio/../cocos2d;C:/cocos2d-x-project/Stoneman/proj.android-studio/../cocos2d/cocos;C:/cocos2d-x-project/Stoneman/proj.android-studio/../cocos2d/external NDK_TOOLCHAIN_VERSION=4.9 NDK_DEBUG=1
+
+[armeabi] Install        : libcrystax.so => libs/armeabi/libcrystax.so
+[armeabi] Install        : libcocos2dcpp.so => libs/armeabi/libcocos2dcpp.so
+[armeabi] Install        : libboost_coroutine.so => libs/armeabi/libboost_coroutine.so
+[armeabi] Install        : libboost_system.so => libs/armeabi/libboost_system.so
+[armeabi] Install        : libboost_locale.so => libs/armeabi/libboost_locale.so
+[armeabi] Install        : libboost_context.so => libs/armeabi/libboost_context.so
+[armeabi] Install        : libboost_thread.so => libs/armeabi/libboost_thread.so
+[armeabi] Install        : libboost_chrono.so => libs/armeabi/libboost_chrono.so
