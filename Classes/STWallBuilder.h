@@ -4,6 +4,7 @@
 #include <unordered_map>
 #include <json/document.h>
 #include <string>
+#include <Box2D/Box2D.h>
 using namespace rapidjson;
 using namespace cocos2d;
 
@@ -38,6 +39,7 @@ public:
 		2. move_absolute : x, y 좌표값을 절대좌표로 이동.이동후 값을 checkpoint 속성으로 저장시킬 수 있음.
 		3. move_relative : x, y 좌표값을 상대좌표로 이동.이동후 값을 checkpoint 속성으로 저장시킬 수 있음.
 		4. solid_wall : 벽을 세움.상대좌표로 이동됨.tile속성을 추가로 줄 수 있음.이동후 값을 checkpoint 속성으로 저장시킬 수 있음.
+		5. breakable_wall : 부술수 있는 벽. 돌진으로 부서짐.
 
 	",*/
 	void makeWalls(rapidjson::Document& j, const std::string & level);
@@ -54,6 +56,7 @@ public:
 private:
 	//std::unordered_map<int, std::unordered_map<int, stdnElement>> _map;
 	std::map<std::tuple<int, int>, stdnElement> _map;
+	std::map<b2Fixture*, std::vector<Sprite*>> _getSpritesByFixture;
 	cocos2d::SpriteBatchNode* _batchNode{ nullptr };
 	std::map<std::string, cocos2d::SpriteBatchNode*> _batchNodeMap;
 	cocos2d::SpriteBatchNode* _black{ nullptr };

@@ -146,7 +146,7 @@ public:
 		using ActionType = Actions<std::function<void(Args...)>>;
 		if (ActionType::list.find(forward<TString>(hook)) != ActionType::list.end()) {
 			for (auto& item : ActionType::list[forward<TString>(hook)]) {
-				item.second(std::forward<Args>(args)...)
+				item.second(std::forward<Args>(args)...);
 			}
 		}
 		return _sp;

@@ -29,6 +29,7 @@ USING_NS_CC;
 using namespace std;
 float IngameScene::_timeScale = 1.0f;
 std::shared_ptr<b2World> IngameScene::world = nullptr;
+std::shared_ptr<STContactListener> IngameScene::_cl_p = nullptr;
 const float IngameScene::OneBlockPx = 20.f;
 IngameScene* IngameScene::_uniqueScene = nullptr;
 
@@ -115,9 +116,9 @@ void IngameScene::appInit()
 			[this](boost::coroutines::symmetric_coroutine<void>::yield_type& yield) {
 	});
 
-
+	
 	// Json load
-	auto js = fu->getStringFromFile("map2.json");
+	auto js = fu->getStringFromFile("map3.json");
 	_maps.Parse(js.c_str());
 
 
@@ -448,7 +449,7 @@ void IngameScene::gameInterface()
 		_isRight = true;
 	};
 	auto cancelMove = [this]()->void {
-		endDash();
+		apHookActionManager::getInstance()->runHook("dash_end");
 		_checkMoveButton = false;
 	};
 	touchManager->addBehavior(leftButton, APTouchType::Began, leftOn,
@@ -534,7 +535,8 @@ void IngameScene::gameInterface()
 				buttonSize.width, buttonSize.height)));
 	touchManager->setOrder(skillButton, 10);
 	touchManager->addBehavior(skillButton, APTouchType::Began, [this]() {
-		doDash();
+		apHookActionManager::getInstance()->runHook("skill_clicked");
+		jumpTouchEnd();
 	}, "skillDown", "skillDown_b");
 
 
@@ -555,7 +557,7 @@ void IngameScene::gameInterface()
 			rightOn();
 			break;
 		case K::KEY_K:
-			doDash();
+			apHookActionManager::getInstance()->runHook("skill_clicked");
 			break;
 		case K::KEY_L:
 			apHookActionManager::getInstance()->runHook("jump_clicked");
@@ -624,6 +626,79 @@ void IngameScene::gameInterface()
 		_checkJumpHighest = false;
 	});
 
+	//skill(dash) button clicked
+	am->addAction("skill_clicked", "do_skill", [this]()->void {
+
+		jumpTouchEnd();
+		
+		if (!_checkMoveButton) return;
+
+		float direction = 1.0f;
+		float finalDashAngle = 0;
+		if (_isRight == true) finalDashAngle = _dashAngle;
+		else finalDashAngle = M_PI - _dashAngle;
+		_charBody->SetLinearVelocity(b2Vec2(0.f, /*_charBody->GetLinearVelocity().y*/0.f));
+		_charBody->ApplyLinearImpulse(b2Vec2(
+			_dashPower * std::cos(finalDashAngle) / SCALE_RATIO,
+			_dashPower * std::sin(finalDashAngle) / SCALE_RATIO), _charBody->GetWorldCenter(), true);
+
+
+		_airResistance *= _dashAirRatio;
+		_isDashing = true;
+
+
+		unscheduleLocally("endDash");
+		scheduleOnceLocally([this](float delta)->void {
+			apHookActionManager::getInstance()->runHook("dash_end");
+		}, _dashDuration, "endDash");
+	});
+
+	//dash end event
+	am->addAction("dash_end", "do_dash_end", [this]()->void {
+		_isDashing = false;
+		unscheduleLocally("endDash");
+		_airResistance = _originAirResistance;
+	});
+
+	//bounce when you hit the wall while dashing
+	auto bounce = [this](float power, bool isRight) ->void {
+		auto bouncePower = _dashWallBouncePower * (1.0f - _dashWallCondition + power);
+		float radian = 0;
+		if (isRight) {
+			radian = _dashWallBounceRadian;
+		}
+		else {
+			radian = M_PI - _dashWallBounceRadian;
+		}
+
+		_charBody->ApplyLinearImpulse(
+			b2Vec2(
+				std::cos(radian) * bouncePower / SCALE_RATIO,
+				std::sin(radian) * bouncePower / SCALE_RATIO),
+			_charBody->GetWorldCenter(), true);
+	};
+	am->addAction("character_dash_wall_right", "bounce_right", [this, bounce](float power)->void {
+		bounce(power, true);
+	});
+	am->addAction("character_dash_wall_right", "bounce_left", [this, bounce](float power)->void {
+		bounce(power, false);
+	});
+
+	am->addAction("character_hit_ground", "camera_vibration_and_effect", [this](float power)->void {
+		_camera->vibrateCameraDirection(
+			power * _cameraVRatio,
+			power * _cameraVDuration,
+			0.5f * M_PI);
+
+		cocos2d::log("hit the ground power is %f", power);
+		boost::coroutines::symmetric_coroutine<void>::call_type gogo(
+			[this](boost::coroutines::symmetric_coroutine<void>::yield_type& yield) {
+			_effectGen->generateEffect(_effectConf, _characterNode->getPosition().x, _characterNode->getPosition().y - _boxHeight / 2);
+		});
+		apAsyncTaskManager::getInstance()->addTask(std::move(gogo));
+	
+	});
+
 }
 void IngameScene::initializePhysics(const std::string& level)
 {
@@ -631,6 +706,9 @@ void IngameScene::initializePhysics(const std::string& level)
 	auto visibleSize = Director::getInstance()->getVisibleSize();
 	auto gravity = b2Vec2(0.0f, -40.0f);
 	world = std::make_shared<b2World>(gravity);
+
+	_cl_p = std::make_shared<STContactListener>(this);
+	world->SetContactListener(_cl_p.get());
 
 #if  (CC_TARGET_PLATFORM == CC_PLATFORM_WIN32)
 	_debugDraw = std::make_shared<GLESDebugDraw>(SCALE_RATIO);
@@ -640,14 +718,17 @@ void IngameScene::initializePhysics(const std::string& level)
 	_debugDraw->SetFlags(flags);
 #endif
 
+	// ---------------------------------------------------
+	// -------------------ADD WALL------------------------
+	// ---------------------------------------------------
 
-	//ADD WALL
 	_wallBuilder = STWallBuilder::create();
 	_wallBuilder->makeWalls(_maps, _level);
 	_camera->setBorderSize(
 		_maps["level"][_level.c_str()]["size"]["w"].GetInt(),
 		_maps["level"][_level.c_str()]["size"]["h"].GetInt());
 	_masterField->addChild(_wallBuilder, 10, "wallBuilder");
+
 	//_wallBuilder->makeWall(-20, -20, 40, 40);
 	//_wallBuilder->makeWall(20, 0, 7, 10);
 	/*addWall((visibleSize.width / 2), 50, visibleSize.width, 10); //CEIL
@@ -770,7 +851,7 @@ void IngameScene::initializePhysics(const std::string& level)
 
 
 
-
+	
 
 	// set hook event at each frame's userInfo.
 	/*
@@ -852,6 +933,9 @@ void IngameScene::initializePhysics(const std::string& level)
 		C_UP,
 		C_DOWN
 	};
+
+
+	// if the character moving right and hit the wall of left side, then normal direction is point "left"
 	auto isNormalDirection = [](const b2WorldManifold& worldManifold, ContactDirection direction)->bool {
 		auto similar = [](float value, int a)->bool {
 			switch (a) {
@@ -893,8 +977,7 @@ void IngameScene::initializePhysics(const std::string& level)
 		return false;
 	};
 
-	_cl_p = std::make_shared<STContactListener>(this);
-	world->SetContactListener(_cl_p.get());
+	
 
 
 	_cl_p->setBeginContact(_charBody, [this, isNormalDirection](b2Contact* contact, b2Fixture* other) {
@@ -903,7 +986,13 @@ void IngameScene::initializePhysics(const std::string& level)
 		cocos2d::log("begContact normalX:%.2f, normalY:%.2f", worldManifold.normal.x,
 			worldManifold.normal.y);
 		if (isNormalDirection(worldManifold, C_UP)) {
+
+			//if the first floor from high air the player was.
+			if (_floorFixtures.empty()) {
+				_goFloorEffect = true;
+			}
 			_floorFixtures.emplace(other);
+			
 		}
 	
 
@@ -946,11 +1035,13 @@ void IngameScene::initializePhysics(const std::string& level)
 
 	});
 
+
 	_cl_p->setPostSolve(_charBody,
 		[this, isNormalDirection](b2Contact* contact, const b2ContactImpulse* impulse, b2Fixture* other) {
 
 		b2WorldManifold worldManifold;
 		contact->GetWorldManifold(&worldManifold);
+		auto actionManager = apHookActionManager::getInstance();
 
 		_hitPower = impulse->normalImpulses[0];
 		if (_hitPower >= 0.05f) {
@@ -964,7 +1055,8 @@ void IngameScene::initializePhysics(const std::string& level)
 			impulse->tangentImpulses[0], // useless. -0.00
 			impulse->tangentImpulses[1]); // useless. -107374176.00*/
 		// if hit Ground!
-		if (impulse->normalImpulses[0] >= 0.05f &&
+		if (_goFloorEffect == true
+			/*impulse->normalImpulses[0] >= 0.05f*/ &&
 			isNormalDirection(worldManifold, C_UP)) {
 
 			
@@ -974,26 +1066,39 @@ void IngameScene::initializePhysics(const std::string& level)
 			if (power >= 0.2f) {
 				power = 0.2f;
 			}
-			//_characterHitGroundYes = true;
-			/*apHookActionManager*/characterHitGround(power);
+			actionManager->runHook("character_hit_ground", power);
+			_goFloorEffect = false;
+			//characterHitGround(power);
 
 
 
 		}
 		// hit walls if character is moving left
-		else if ((impulse->normalImpulses[0] >= 0.01f ||
-			impulse->normalImpulses[1] >= 0.01f) &&
+		else if (/*(impulse->normalImpulses[0] >= 0.01f ||
+			impulse->normalImpulses[1] >= 0.01f) &&*/
 			isNormalDirection(worldManifold, C_RIGHT)) {
-			characterHitLeftWall(impulse->normalImpulses[0]);
+
+			if (_isDashing == true) {
+
+				actionManager->runHook("character_dash_wall_left", impulse->normalImpulses[0]);
+				actionManager->runHook("end_dash");
+			}
+
+			//characterHitLeftWall(impulse->normalImpulses[0]);
 			//_characterHitLeftWallYes = true;
 		}
 
 		// hit walls if character is moving right
-		else if ((impulse->normalImpulses[0] >= 0.01f ||
-			impulse->normalImpulses[1] >= 0.01f) &&
+		else if (/*(impulse->normalImpulses[0] >= 0.01f ||
+			impulse->normalImpulses[1] >= 0.01f) &&*/
 			isNormalDirection(worldManifold, C_LEFT)) {
 
-			characterHitRightWall(impulse->normalImpulses[0]);
+			if (_isDashing == true) {
+
+				actionManager->runHook("character_dash_wall_right", impulse->normalImpulses[0]);
+				actionManager->runHook("end_dash");
+			}
+			//characterHitRightWall(impulse->normalImpulses[0]);
 			//_characterHitRightWallYes = true;
 		}
 
@@ -1010,8 +1115,10 @@ void IngameScene::initializePhysics(const std::string& level)
 			_floorFixtures.erase(other);
 		}
 	});
-	// if Hit Ground, Wall.
-	_localUpdater->addFunc(P_WALLCHECK, [this](float)->void {
+
+
+	// set status if the character Hits Ground or Wall.
+	/*_localUpdater->addFunc(P_WALLCHECK, [this](float)->void {
 		if (_characterHitGroundYes) {
 			_characterHitGroundYes = false;
 			characterHitGround(_hitPower);
@@ -1026,7 +1133,8 @@ void IngameScene::initializePhysics(const std::string& level)
 			characterHitRightWall(_hitPower);
 		}
 	
-	});
+	});*/
+
 
 	// physical things.
 	_localUpdater->addFunc(P_WORLDSTEP, [this](float delta)->void {
@@ -1069,11 +1177,11 @@ void IngameScene::initializePhysics(const std::string& level)
 		for (b2Body *body = world->GetBodyList(); body != NULL; body =
 			body->GetNext())
 			if (body->GetUserData()) {
-				auto sprite = (Node*)body->GetUserData();
-				sprite->setPosition(
+				auto node = (Node*)body->GetUserData();
+				node->setPosition(
 					Vec2(body->GetPosition().x * SCALE_RATIO,
 						body->GetPosition().y * SCALE_RATIO));
-				sprite->setRotation(-1 * CC_RADIANS_TO_DEGREES(body->GetAngle()));
+				node->setRotation(-1 * CC_RADIANS_TO_DEGREES(body->GetAngle()));
 
 			}
 		//clear forces 
@@ -1151,34 +1259,6 @@ void IngameScene::jumpTouchEnd() {
 
 }
 
-void IngameScene::doDash() {
-
-	if (!_checkMoveButton) return;
-
-	float direction = 1.0f;
-	float finalDashAngle = 0;
-	if(_isRight == true) finalDashAngle = _dashAngle;
-	else finalDashAngle = M_PI - _dashAngle;
-	_charBody->SetLinearVelocity(b2Vec2(0.f, /*_charBody->GetLinearVelocity().y*/0.f));
-	_charBody->ApplyLinearImpulse(b2Vec2(
-		_dashPower * std::cos(finalDashAngle) / SCALE_RATIO, 
-		_dashPower * std::sin(finalDashAngle) / SCALE_RATIO), _charBody->GetWorldCenter(), true);
-
-
-	_airResistance *= _dashAirRatio;
-	_isDashing = true;
-
-
-	unscheduleLocally("endDash");
-	scheduleOnceLocally([this](float delta)->void {endDash(); },_dashDuration, "endDash");
-}
-
-void IngameScene::endDash() {
-	_isDashing = false;
-	unscheduleLocally("endDash");
-	_airResistance = _originAirResistance;
-
-}
 void IngameScene::addTextField(const std::function<void(cocos2d::ui::EditBox*)>& callback, const std::string& placeHolder) {
 
 	auto visibleSize = Director::getInstance()->getVisibleSize();
@@ -1237,6 +1317,10 @@ std::shared_ptr<b2World> IngameScene::getb2World()
 {
 	return IngameScene::world;
 }
+std::shared_ptr<STContactListener> IngameScene::getContactListener()
+{
+	return IngameScene::_cl_p;
+}
 void IngameScene::setJumpPower(float power) {
 	_jumpPower=power;
 	cocos2d::log("%f",power);
@@ -1287,14 +1371,13 @@ void IngameScene::update(float delta) {
 	// do tasks within forced time
 	apAsyncTaskManager::getInstance()->doTasks();
 }
-
+/*
 void IngameScene::characterHitGround(float power) {
 	_camera->vibrateCameraDirection(
 		power * _cameraVRatio,
 		power * _cameraVDuration,
 		0.5f * M_PI);
 
-	_haveToGenerateEffect = true;
 	cocos2d::log("hit the ground power is %f", power);
 	boost::coroutines::symmetric_coroutine<void>::call_type gogo(
 		[this](boost::coroutines::symmetric_coroutine<void>::yield_type& yield) {
@@ -1309,22 +1392,17 @@ void IngameScene::characterHitGround(float power) {
 	//ae->playEffect("sounds/stone.mp3");
 	//ae->playEffect("sounds/stone.wav");
 
-}
+}*/
 
-void IngameScene::characterHitLeftWall(float power) {
+/*void IngameScene::characterHitLeftWall(float power) {
 	cocos2d::log("leftWallHitPower : %f", power);
 	_debugBox->get() << power << DebugBox::push;
 	// wall bouncing
 	if (_isDashing == true) {
-		auto bouncePower = _dashWallBouncePower * (1.0f - _dashWallCondition + power);
-		_charBody->ApplyLinearImpulse(
-			b2Vec2(
-				std::cos(_dashWallBounceRadian) * bouncePower / SCALE_RATIO,
-				std::sin(_dashWallBounceRadian) * bouncePower / SCALE_RATIO),
-			_charBody->GetWorldCenter(), true);
+		
 		
 	}
-	endDash();
+	apHookActionManager::getInstance()->runHook("dash_end");
 }
 void IngameScene::characterHitRightWall(float power) {
 	cocos2d::log("rightWallHitPower : %f", power);
@@ -1339,8 +1417,8 @@ void IngameScene::characterHitRightWall(float power) {
 				std::sin(M_PI - _dashWallBounceRadian) * bouncePower / SCALE_RATIO),
 			_charBody->GetWorldCenter(), true);
 	}
-	endDash();
-}
+	apHookActionManager::getInstance()->runHook("dash_end");
+}*/
 
 
 void IngameScene::draw(Renderer *renderer, const Mat4& transform, uint32_t transformUpdated) {

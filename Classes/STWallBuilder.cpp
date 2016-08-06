@@ -193,6 +193,7 @@ void STWallBuilder::makeWalls(rapidjson::Document& j, const std::string & level)
 				b2EdgeShape edgeShape;
 				b2FixtureDef myFixtureDef;
 				myFixtureDef.shape = &edgeShape;
+				myFixtureDef.userData = this;
 
 				b2Vec2 leftBottom(0 / SCALE_RATIO, 0 / SCALE_RATIO);
 				b2Vec2 leftTop(0 / SCALE_RATIO, h / SCALE_RATIO);
@@ -232,6 +233,12 @@ void STWallBuilder::makeWalls(rapidjson::Document& j, const std::string & level)
 				edgeShape.m_hasVertex3 = true;
 				wallBody->CreateFixture(&myFixtureDef);
 				//_walls.emplace_back(wallBody);
+
+				for (auto fixture = wallBody->GetFixtureList(); fixture != nullptr;
+					fixture = fixture->GetNext()) {
+					//??
+				}
+
 
 				
 				for (int i = x_int; i < x_int + w_int; i++) {

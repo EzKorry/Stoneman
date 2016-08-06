@@ -154,7 +154,11 @@ public:
 	void addTextField(const std::function<void(cocos2d::ui::EditBox*)>& callback, const std::string& placeHolder);
 	void addTextField(float* fp, const std::string& placeHolder);
 	void replaceBox();
+
+	//b2world pointer getter
 	static std::shared_ptr<b2World> getb2World();
+
+	static std::shared_ptr<STContactListener> getContactListener();
 	static const float OneBlockPx;
 	static float _timeScale;
 
@@ -186,20 +190,13 @@ private:
 	void initializePhysics(const std::string& level);
 	void initializeEffectManager();
 
-
-	// character dashes.
-	void doDash();
-
-	// character finishes dashing.
-	void endDash();
-
 	
 	// jump touch end callback.
 	void jumpTouchEnd();
 
-	void characterHitGround(float power);
-	void characterHitLeftWall(float power);
-	void characterHitRightWall(float power);
+	//void characterHitGround(float power);
+	//void characterHitLeftWall(float power);
+	//void characterHitRightWall(float power);
 
 	// box2d stepping parameters.
 	int _positionIterations{ 3 };
@@ -268,7 +265,13 @@ private:
 	// background node
 	cocos2d::Node* _backgroundField;
 	
+	// true if the player lasts in the air after that he was highest.
 	bool _checkJumpHighest{ false };
+
+	// true if it has to make floor effect.
+	// it sets true when contact listener begin.
+	// it sets false right after hook action executed.
+	bool _goFloorEffect{ false };
 	cocos2d::Vec2 _nowTextPos { Vec2(50.0f, 15.0f) };
 	cocos2d::Vec2 _vibrationOffset {Vec2::ZERO };
 
@@ -294,12 +297,15 @@ private:
 #if  (CC_TARGET_PLATFORM == CC_PLATFORM_WIN32)
 	std::shared_ptr<GLESDebugDraw> _debugDraw { nullptr};
 #endif
-	std::shared_ptr<STContactListener> _cl_p { nullptr};
+
+	//box2d contact listener.
+	static std::shared_ptr<STContactListener> _cl_p;
+
 	//GLESDebugDraw *_debugDraw { nullptr };
 	std::vector<b2Body*> _walls;
 	bool _checkMoveButton { false };
 	bool _isRight { false };
-	bool _haveToGenerateEffect{ false };
+
 	// used when keyboard testing
 	int _keyCount = 0;
 
