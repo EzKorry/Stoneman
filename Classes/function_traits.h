@@ -38,6 +38,7 @@ public:
 	using result_type = ReturnType;
 	using function_type = function<ReturnType(Args...)>;
 	using args_type = __args_type<Args...>;
+	using function_type_decayed = function<ReturnType(typename std::decay<Args>::type...)>;
 
 	template <size_t i>
 	struct arg

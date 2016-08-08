@@ -45,7 +45,16 @@ template<class TFunc>
 class apActionFuncImpl : public apActionFunc {
 
 };
+//************ how to use **************
+//	auto manager = apHookActionManager::getInstance();
+//	addAction("oh_yeah", [](Power power) {
+//		power.ohyeah();
+//	});
+//	Power p;
+//	RunHook("oh_yeah", p);
+// ***************************************
 
+// action's parameter types can't be a reference or const. (for my weak c++..)
 class apHookActionManager {
 private:
 	template <class Func>
@@ -98,7 +107,7 @@ public:
 		auto& list = Actions<
 			typename function_traits<
 				typename std::decay<TFunc>::type
-			>::function_type
+			>::function_type_decayed
 		>::list;
 		//addHook(std::forward<TString1>(hook));
 
@@ -143,7 +152,7 @@ public:
 	// run hook with type assumption.
 	template<class TString, class... Args>
 	shared_ptr<apHookActionManager> runHook(TString&& hook, Args&&... args) {
-		using ActionType = Actions<std::function<void(Args...)>>;
+		using ActionType = Actions<std::function<void(typename std::decay<Args>::type...)>>;
 		if (ActionType::list.find(forward<TString>(hook)) != ActionType::list.end()) {
 			for (auto& item : ActionType::list[forward<TString>(hook)]) {
 				item.second(std::forward<Args>(args)...);

@@ -19,6 +19,7 @@
 #include "DebugBox.h"
 #include "STBox2dNode.h"
 #include "apAnimationManager.h"
+#include "function_traits.h"
 #include <sstream>
 #include <future>
 #include <fstream>
@@ -662,9 +663,10 @@ void IngameScene::gameInterface()
 
 	//bounce when you hit the wall while dashing
 	auto bounce = [this](float power, bool isRight) ->void {
+		_debugBox->get() << "bounced!!" << DebugBox::push;
 		auto bouncePower = _dashWallBouncePower * (1.0f - _dashWallCondition + power);
 		float radian = 0;
-		if (isRight) {
+		if (!isRight) {
 			radian = _dashWallBounceRadian;
 		}
 		else {
@@ -680,7 +682,7 @@ void IngameScene::gameInterface()
 	am->addAction("character_dash_wall_right", "bounce_right", [this, bounce](float power)->void {
 		bounce(power, true);
 	});
-	am->addAction("character_dash_wall_right", "bounce_left", [this, bounce](float power)->void {
+	am->addAction("character_dash_wall_left", "bounce_left", [this, bounce](float power)->void {
 		bounce(power, false);
 	});
 
@@ -1079,9 +1081,8 @@ void IngameScene::initializePhysics(const std::string& level)
 			isNormalDirection(worldManifold, C_RIGHT)) {
 
 			if (_isDashing == true) {
-
-				actionManager->runHook("character_dash_wall_left", impulse->normalImpulses[0]);
-				actionManager->runHook("end_dash");
+				actionManager->runHook("character_dash_wall_left", static_cast<float>(impulse->normalImpulses[0]));
+				actionManager->runHook("dash_end");
 			}
 
 			//characterHitLeftWall(impulse->normalImpulses[0]);
@@ -1094,9 +1095,8 @@ void IngameScene::initializePhysics(const std::string& level)
 			isNormalDirection(worldManifold, C_LEFT)) {
 
 			if (_isDashing == true) {
-
-				actionManager->runHook("character_dash_wall_right", impulse->normalImpulses[0]);
-				actionManager->runHook("end_dash");
+				actionManager->runHook("character_dash_wall_right", static_cast<float>(impulse->normalImpulses[0]));
+				actionManager->runHook("dash_end");
 			}
 			//characterHitRightWall(impulse->normalImpulses[0]);
 			//_characterHitRightWallYes = true;
