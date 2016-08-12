@@ -37,7 +37,8 @@ enum EntityCategory {
 enum ScheduleUpdateFuncPriority {
 	P_WORLDSTEP = 1,
 	P_WALLCHECK = 3,
-	P_CAMERA = 5
+	P_CAMERA = 5,
+	P_REPLACEMAPSPRITES = 6
 };
 
 class STCamera;
@@ -157,22 +158,33 @@ public:
 
 	//b2world pointer getter
 	static std::shared_ptr<b2World> getb2World();
-
 	static std::shared_ptr<STContactListener> getContactListener();
 	static const float OneBlockPx;
 	static float _timeScale;
 
+	//get Camera
+	STCamera* getCamera();
 
+	// get masterField's position.
+	Vec2 getMasterFieldPosition();
+	Node* getMasterField();
 
+	//get debug Box
+	DebugBox* getDebugBox();
+
+	//get character's box2d body.
 	b2Body* getCharBody();
 	std::vector<b2Body*> getWalls();
 
 	// local Scheduler methods.
-	Scheduler* getLocalScheduler() const { return _localScheduler; }
+	Scheduler* getLocalScheduler() { return _localScheduler; }
 	void scheduleLocally(const std::function<void(float)>& callback, float interval, unsigned int repeat, float delay, const std::string &key);
 	void unscheduleLocally(const std::string &key);
 	void scheduleOnceLocally(const std::function<void(float)> &callback, float delay, const std::string &key);
 	Action * runLocalAction(Node* target, Action* action);
+	
+	//getter
+	std::shared_ptr<UpdateCaller> getLocalUpdater();
 
 
 
@@ -243,8 +255,8 @@ private:
 	
 	// localScheduler for slow motion.
 	// It affects by "Pause", or slow motion.
-	Scheduler* _localScheduler{ nullptr };
-	ActionManager* _localActionManager{ nullptr };
+	static Scheduler* _localScheduler;
+	static ActionManager* _localActionManager;
 
 	// updater.
 	std::shared_ptr<UpdateCaller> _localUpdater, _globalUpdater;

@@ -7,7 +7,8 @@
 #include <boost/coroutine/all.hpp>
 
 using namespace std;
-using apTaskType = boost::coroutines::symmetric_coroutine<void>::call_type;
+using apTaskCallType = boost::coroutines::symmetric_coroutine<void>::call_type;
+using apTaskYieldType = boost::coroutines::symmetric_coroutine<void>::yield_type;
 class apAsyncTaskManager
 {
 public:
@@ -20,8 +21,9 @@ public:
 		}
 		return _sp;
 	}
-	void addTask(boost::coroutines::symmetric_coroutine<void>::call_type&& callback);
-	apTaskType& getTask();
+	void addTask(apTaskCallType&& callback);
+	/*void addTask(const function<void()>& callback);*/
+	apTaskCallType& getTask();
 	virtual void init();
 	virtual void setInterval(float delta);
 	virtual void doTasks();
@@ -30,8 +32,8 @@ public:
 	
 private:
 	static std::shared_ptr<apAsyncTaskManager> _sp;
-	std::list<apTaskType> _list;
-	apTaskType _doTasks;
+	std::list<apTaskCallType> _list;
+	apTaskCallType _doTasks;
 	float _delta{ 1.f / 60.f };
 };
 

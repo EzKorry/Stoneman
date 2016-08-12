@@ -5,6 +5,8 @@
 #include <json/document.h>
 #include <string>
 #include <Box2D/Box2D.h>
+#include <array>
+#include <tuple>
 using namespace rapidjson;
 using namespace cocos2d;
 
@@ -16,6 +18,15 @@ enum SurfaceType {
 	ST_top_right = 0x0002,
 	ST_bottom_left = 0x0004,
 	ST_bottom_right = 0x0008,
+};
+enum class WallType {
+	Solid,
+	Breakable
+};
+
+enum UpdateWallSprite {
+	UW_X,
+	UW_Y
 };
 struct stdnElement {
 	int level = 0;
@@ -43,12 +54,19 @@ public:
 
 	",*/
 	void makeWalls(rapidjson::Document& j, const std::string & level);
+	void setCorrectTex(cocos2d::Sprite* sp);
 	bool init() override;
 	static const float surfaceGlowRatio;
 	// based coordinate. 1 = 20px, 
 	// 0 = 0px ~ 20px, 1 = 20px ~ 40px
 	void makeWall(int x, int y, int width, int height);
+	void changeWallStatus(b2Body* body, WallType status);
+	void breakWall(b2Body* body);
+	void breakWall(b2Fixture* fixture);
+	void waitForUpdateVecRect();
 
+	// It used when making clipping node.
+	cocos2d::SpriteBatchNode* getBatchSpriteNode(const std::string& path);
 
 	const int maxBlockDarknessLevel = 6;
 	virtual ~STWallBuilder();
@@ -56,11 +74,34 @@ public:
 private:
 	//std::unordered_map<int, std::unordered_map<int, stdnElement>> _map;
 	std::map<std::tuple<int, int>, stdnElement> _map;
-	std::map<b2Fixture*, std::vector<Sprite*>> _getSpritesByFixture;
+	std::map<b2Body*, std::vector<Sprite*>> _getSpritesByBody;
+	std::map<b2Body*, std::vector<Sprite*>> _getCrackByBody;
+	std::map<b2Body*, WallType> _wallStatus;
+	
+	//std::map<b2Fixture*, b2Body*> _fixtureToBody;
 	cocos2d::SpriteBatchNode* _batchNode{ nullptr };
 	std::map<std::string, cocos2d::SpriteBatchNode*> _batchNodeMap;
+	cocos2d::SpriteBatchNode* _batch{ nullptr };
 	cocos2d::SpriteBatchNode* _black{ nullptr };
 	cocos2d::RenderTexture* _target{ nullptr };
+
+	// using for sprite update
+	int _mapArrayWidth{ 0 };
+	int _mapArrayHeight{ 0 };
+	int _nowMasterFieldX = 0;
+	int _nowMasterFieldY = 0;
+
+	int _waitForUpdateVecRect = 20;
+	int _waitForUpdateVecRectMax = 20;
+
+	//(0,0) ~ (47, 26) : normal
+	//array[48][27] : edge
+	std::array<std::array<Sprite*, 49>, 49> _mapSprites;
+	std::vector<std::tuple<Rect, b2Body*>> _vecRect;
+	std::map<int, std::map<int, Rect&>> _coordRect;
+	//std::vector<b2Body*> _sortedByDistance;
+
+	const std::string crackedSpritePath = "img/cracked.png";
 //	cocos2d::Node* _batchNode{ nullptr };
 //	cocos2d::Node* _black{ nullptr };
 	

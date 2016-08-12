@@ -33,6 +33,8 @@ std::shared_ptr<b2World> IngameScene::world = nullptr;
 std::shared_ptr<STContactListener> IngameScene::_cl_p = nullptr;
 const float IngameScene::OneBlockPx = 20.f;
 IngameScene* IngameScene::_uniqueScene = nullptr;
+ActionManager* IngameScene::_localActionManager = nullptr;
+Scheduler* IngameScene::_localScheduler = nullptr;
 
 bool IngameScene::init() {
 
@@ -428,7 +430,7 @@ void IngameScene::gameInterface()
 	auto leftButton = Sprite::create(_path["leftButton"]);
 	leftButton->setPosition(buttonSize.width / 2, buttonSize.height / 2); // 75,75
 	leftButton->setScale(buttonSpriteSize.width / leftButton->getContentSize().width);
-	_camera->addChild(leftButton, 1, "leftButton");
+	_camera->addChild(leftButton, 10, "leftButton");
 	/*touchManager->registerNode(leftButton,
 		APTouchManager::createCheckerWithRect(leftButton,
 			Rect(-buttonSize.width / 2, -buttonSize.height / 2,
@@ -472,7 +474,7 @@ void IngameScene::gameInterface()
 	auto rightButton = Sprite::create(_path["rightButton"]);
 	rightButton->setPosition(buttonSize.width * 1.5f, buttonSize.height / 2);
 	rightButton->setScale(buttonSpriteSize.width / rightButton->getContentSize().width);
-	_camera->addChild(rightButton, 1, "rightButton");
+	_camera->addChild(rightButton, 10, "rightButton");
 	/*touchManager->registerNode(rightButton,
 		APTouchManager::createCheckerWithRect(rightButton,
 			Rect(-buttonSize.width / 2, -buttonSize.height / 2,
@@ -506,7 +508,7 @@ void IngameScene::gameInterface()
 	auto upButtonSize = buttonSize;//upButton->getContentSize();
 	upButton->setPosition(visibleSize.width - upButtonSize.width / 2, upButtonSize.height / 2);
 	upButton->setScale(buttonSpriteSize.width / upButton->getContentSize().width);
-	_camera->addChild(upButton, 1, "upButton");
+	_camera->addChild(upButton, 10, "upButton");
 	touchManager->registerNode(upButton,
 		APTouchManager::createCheckerWithRect(upButton,
 			Rect(-buttonSize.width / 2, -buttonSize.height / 2,
@@ -529,7 +531,7 @@ void IngameScene::gameInterface()
 	auto skillButtonSize = buttonSize;//skillButton->getContentSize();
 	skillButton->setPosition(visibleSize.width - skillButtonSize.width *1.5f, skillButtonSize.height / 2);
 	skillButton->setScale(buttonSpriteSize.width / skillButton->getContentSize().width);
-	_camera->addChild(skillButton, 1, "skillButton");
+	_camera->addChild(skillButton, 10, "skillButton");
 	touchManager->registerNode(skillButton,
 		APTouchManager::createCheckerWithRect(skillButton,
 			Rect(-buttonSize.width / 2, -buttonSize.height / 2,
@@ -800,13 +802,19 @@ void IngameScene::initializePhysics(const std::string& level)
 			auto bg1 = DrawNode::create();
 			auto size = Director::getInstance()->getVisibleSize();
 			bg1->drawSolidRect(Vec2(0, 0), Vec2(size.width, size.height), util.switchColor(_colors["bg1-1"]));
+
+			auto bgSprite = Sprite::create("img/background3.png");
+			bgSprite->setAnchorPoint(Vec2::ZERO);
+			_backgroundField->addChild(bgSprite, 1);
 			_backgroundField->addChild(bg3, 5);
 			_backgroundField->addChild(bg2, 3);
-			_backgroundField->addChild(bg1, 1);
+			//_backgroundField->addChild(bg1, 1);
 			_backgroundFollowRatio.emplace(bg3, 0.3f);
 			_backgroundFollowRatio.emplace(bg2, 0.1f);
-			_backgroundFollowRatio.emplace(bg1, 0.f);
-
+			//_backgroundFollowRatio.emplace(bg1, 0.f);
+			_backgroundFollowRatio.emplace(bgSprite, 0.f);
+			
+			
 			
 		}
 
@@ -1081,7 +1089,7 @@ void IngameScene::initializePhysics(const std::string& level)
 			isNormalDirection(worldManifold, C_RIGHT)) {
 
 			if (_isDashing == true) {
-				actionManager->runHook("character_dash_wall_left", static_cast<float>(impulse->normalImpulses[0]));
+				actionManager->runHook("character_dash_wall_left", impulse->normalImpulses[0]);
 				actionManager->runHook("dash_end");
 			}
 
@@ -1095,7 +1103,7 @@ void IngameScene::initializePhysics(const std::string& level)
 			isNormalDirection(worldManifold, C_LEFT)) {
 
 			if (_isDashing == true) {
-				actionManager->runHook("character_dash_wall_right", static_cast<float>(impulse->normalImpulses[0]));
+				actionManager->runHook("character_dash_wall_right", impulse->normalImpulses[0]);
 				actionManager->runHook("dash_end");
 			}
 			//characterHitRightWall(impulse->normalImpulses[0]);
@@ -1437,6 +1445,26 @@ IngameScene * IngameScene::getInstance()
 	return _uniqueScene;
 }
 
+STCamera * IngameScene::getCamera()
+{
+	return _camera;
+}
+
+Vec2 IngameScene::getMasterFieldPosition()
+{
+	return _masterField->getPosition();
+}
+
+Node * IngameScene::getMasterField()
+{
+	return _masterField;
+}
+
+DebugBox * IngameScene::getDebugBox()
+{
+	return _debugBox;
+}
+
 b2Body* IngameScene::getCharBody() {
 	return _charBody;
 }
@@ -1465,6 +1493,11 @@ Action * IngameScene::runLocalAction(Node* target, Action* action)
 	CCASSERT(action != nullptr, "Argument must be non-nil");
 	_localActionManager->addAction(action, target, !target->isRunning());
 	return action;
+}
+
+std::shared_ptr<IngameScene::UpdateCaller> IngameScene::getLocalUpdater()
+{
+	return _localUpdater;
 }
 
 IngameScene::IngameScene() {

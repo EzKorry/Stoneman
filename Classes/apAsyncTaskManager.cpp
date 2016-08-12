@@ -8,14 +8,19 @@ apAsyncTaskManager::apAsyncTaskManager()
 	init();
 }
 
-void apAsyncTaskManager::addTask(boost::coroutines::symmetric_coroutine<void>::call_type&& callback)
+
+void apAsyncTaskManager::addTask(apTaskCallType&& callback)
 {
 	//if (std::find(_list.begin(), _list.end(), callback.) != _list.end()) {
 		_list.emplace_back(std::move(callback));
 	//}
 }
 
-apTaskType & apAsyncTaskManager::getTask()
+/*void apAsyncTaskManager::addTask(const function<void()>& callback)
+{
+}*/
+
+apTaskCallType & apAsyncTaskManager::getTask()
 {
 	return _doTasks;
 }
