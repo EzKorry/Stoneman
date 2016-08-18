@@ -196,7 +196,7 @@ void STContactListener::removeBody(b2Body* body) {
 	}
 }
 
-STContactListener::STContactListener(IngameScene* p) : _mainScene(p)
+STContactListener::STContactListener() 
 {
 	//_actionManager = apHookActionManager::getInstance();
 	//_dataManager = apDataManager::getInstance();

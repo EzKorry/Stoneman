@@ -1,11 +1,16 @@
 #include "apAsyncTaskManager.h"
 #include <chrono>
 
-
+namespace arphomod {
 std::shared_ptr<apAsyncTaskManager> apAsyncTaskManager::_sp = nullptr;
 apAsyncTaskManager::apAsyncTaskManager()
 {
 	init();
+}
+
+void apAsyncTaskManager::detach(cocos2d::Node * node)
+{
+
 }
 
 
@@ -82,4 +87,5 @@ void apAsyncTaskManager::doTasks()
 
 apAsyncTaskManager::~apAsyncTaskManager()
 {
+}
 }

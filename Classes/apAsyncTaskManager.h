@@ -5,14 +5,19 @@
 #include <memory>
 #include <vector>
 #include <boost/coroutine/all.hpp>
+#include "apDetachManager.h"
+
+namespace arphomod {
+
 
 using namespace std;
 using apTaskCallType = boost::coroutines::symmetric_coroutine<void>::call_type;
 using apTaskYieldType = boost::coroutines::symmetric_coroutine<void>::yield_type;
-class apAsyncTaskManager
+class apAsyncTaskManager : public apDetachInterface
 {
 public:
 	apAsyncTaskManager();
+	virtual void detach(cocos2d::Node* node) override;
 	static std::shared_ptr<apAsyncTaskManager> getInstance() {
 
 		if (_sp == nullptr) {
@@ -37,4 +42,5 @@ private:
 	float _delta{ 1.f / 60.f };
 };
 
+}
 #endif

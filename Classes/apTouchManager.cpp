@@ -45,6 +45,12 @@ void APTouchManager::attachCallback(){
 }
 
 
+void APTouchManager::detach(cocos2d::Node * node)
+{
+	cocos2d::log("aptouchmanager detach called!");
+	removeNode(node);
+}
+
 void APTouchManager::registerNode(cocos2d::Node* node, APTouchChecker checker) {
 
 	if (_d.find(node) != _d.end()) {
@@ -55,6 +61,9 @@ void APTouchManager::registerNode(cocos2d::Node* node, APTouchChecker checker) {
 		node->retain();
 		_d.emplace(node, APTouchData(checker));
 	}
+
+	auto detachManager = apDetachManager::getInstance();
+	detachManager->addNode(node, apDetachManagerType::TouchManager);
 }
 
 
@@ -145,12 +154,11 @@ void APTouchManager::removeNode(cocos2d::Node* node) {
 		//cocos2d::log("%d memer deleted! from touch manager _d map.",result);
 
 
-
 		node->release();
 		//cocos2d::log("node released!from touch manager --> %d",node);
 	}
 
-	debug_d();
+	//debug_d();
 }
 
 void APTouchManager::cancelAllTouch() {
@@ -370,16 +378,12 @@ void APTouchManager::onTouchMoved(cocos2d::Touch* touch, cocos2d::Event* event){
 inline void APTouchManager::runHook(cocos2d::Node* node, APTouchType touchType, cocos2d::Touch* nowTouch) {
 	_nowTouch = nowTouch;
 	if(node && _d.find(node) != _d.end()) {
-		//cocos2d::log("runHook - yesNode!");
 		auto& hook = _d[node].hook;
-		//cocos2d::log("f");
 		if(hook.find(touchType) != hook.end())
-			//cocos2d::log("runHook - actionManagerRunHook!!");
 			_amp->runHook(hook[touchType]);
 
 	}
 	_nowTouch = nullptr;
-	//cocos2d::log("end runhook");
 }
 
 void APTouchManager::onTouchEnded(cocos2d::Touch* touch, cocos2d::Event* event){

@@ -5,6 +5,7 @@
 #include <string>
 #include <unordered_map>
 #include <cocos2d.h>
+#include "apDetachManager.h"
 
 using namespace std;
 using namespace cocos2d;
@@ -22,10 +23,11 @@ public:
 	
 
 
-
-class apAnimationManager
+class apAnimationManager : public apDetachInterface
 {
 public:
+
+	virtual void detach(cocos2d::Node* node) override;
 
 	struct PlayingAnimation {
 		PlayingAnimation() {}
@@ -50,6 +52,9 @@ public:
 	}
 	
 	void connectWithScheduler(cocos2d::Scheduler* scheduler);
+
+	// removeAll!!
+	void disconnect();
 
 	void addNewSpriteSheet(const std::string& plistPath);
 

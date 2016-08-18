@@ -54,15 +54,18 @@ public:
 
 	",*/
 	void makeWalls(rapidjson::Document& j, const std::string & level);
+
+	// update correct texture at each _mapSprites sprite.
 	void setCorrectTex(cocos2d::Sprite* sp);
+
 	bool init() override;
 	static const float surfaceGlowRatio;
 	// based coordinate. 1 = 20px, 
 	// 0 = 0px ~ 20px, 1 = 20px ~ 40px
 	void makeWall(int x, int y, int width, int height);
 	void changeWallStatus(b2Body* body, WallType status);
-	void breakWall(b2Body* body);
-	void breakWall(b2Fixture* fixture);
+	void tryBreakWall(b2Body* body);
+	void tryBreakWall(b2Fixture* fixture);
 	void waitForUpdateVecRect();
 
 	// It used when making clipping node.
@@ -74,9 +77,12 @@ public:
 private:
 	//std::unordered_map<int, std::unordered_map<int, stdnElement>> _map;
 	std::map<std::tuple<int, int>, stdnElement> _map;
-	std::map<b2Body*, std::vector<Sprite*>> _getSpritesByBody;
-	std::map<b2Body*, std::vector<Sprite*>> _getCrackByBody;
-	std::map<b2Body*, WallType> _wallStatus;
+	//std::map<b2Body*, std::vector<Sprite*>> _getSpritesByBody;
+	//std::map<b2Body*, std::vector<Sprite*>> _getCrackByBody;
+	
+	std::map<b2Body*, WallType> _wallType;
+	std::map<WallType, std::string> _wallSpriteFrameName;
+	WallType getWallTypeWithName(const std::string& name);
 	
 	//std::map<b2Fixture*, b2Body*> _fixtureToBody;
 	cocos2d::SpriteBatchNode* _batchNode{ nullptr };
@@ -98,7 +104,6 @@ private:
 	//array[48][27] : edge
 	std::array<std::array<Sprite*, 49>, 49> _mapSprites;
 	std::vector<std::tuple<Rect, b2Body*>> _vecRect;
-	std::map<int, std::map<int, Rect&>> _coordRect;
 	//std::vector<b2Body*> _sortedByDistance;
 
 	const std::string crackedSpritePath = "img/cracked.png";

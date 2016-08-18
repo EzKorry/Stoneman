@@ -193,6 +193,8 @@ void STWallBuilder::makeWalls(rapidjson::Document& j, const std::string & level)
 				
 				std::string tileName = map["tile"].GetString();
 				tileName.append(".png");
+
+
 				//auto wallMasterNode = Node::create();
 				//wallMasterNode->setAnchorPoint(Vec2(0.5f, 0.5f));
 				//this->addChild(wallMasterNode);
@@ -209,14 +211,14 @@ void STWallBuilder::makeWalls(rapidjson::Document& j, const std::string & level)
 
 				b2BodyDef floorBodyDef;
 				floorBodyDef.position.Set(px / SCALE_RATIO, py / SCALE_RATIO);
-				floorBodyDef.userData = this;
+				//floorBodyDef.userData = this;
 				floorBodyDef.type = b2BodyType::b2_staticBody;
 				auto wallBody = world->CreateBody(&floorBodyDef);
 
 				b2EdgeShape edgeShape;
 				b2FixtureDef myFixtureDef;
 				myFixtureDef.shape = &edgeShape;
-				myFixtureDef.userData = this;
+				myFixtureDef.userData = wallBody;
 
 				b2Vec2 leftBottom(0 / SCALE_RATIO, 0 / SCALE_RATIO);
 				b2Vec2 leftTop(0 / SCALE_RATIO, h / SCALE_RATIO);
@@ -258,6 +260,9 @@ void STWallBuilder::makeWalls(rapidjson::Document& j, const std::string & level)
 				//_walls.emplace_back(wallBody);
 
 				_vecRect.emplace_back(make_tuple(Rect(px, py, w, h), wallBody));
+				
+				// wall type input.
+				_wallType[wallBody] = getWallTypeWithName(tileName);
 				
 
 				// set wall status.
@@ -362,7 +367,7 @@ void STWallBuilder::makeWalls(rapidjson::Document& j, const std::string & level)
 
 		// if change x block,
 		auto actionManager = apHookActionManager::getInstance();
-		actionManager->addAction("update_wall_sprite_x", "m",
+		actionManager->addAction("update_wall_sprite_x", "m", this,
 			[this](int diff) {
 			
 			if (diff == 0) return;
@@ -402,7 +407,7 @@ void STWallBuilder::makeWalls(rapidjson::Document& j, const std::string & level)
 		});
 
 		// if y block changed.
-		actionManager->addAction("update_wall_sprite_y", "m",
+		actionManager->addAction("update_wall_sprite_y", "m", this,
 			[this, &db](int diff) {
 
 			if (diff == 0) return;
@@ -452,7 +457,7 @@ void STWallBuilder::makeWalls(rapidjson::Document& j, const std::string & level)
 		});
 
 		// edge change.
-		actionManager->addAction("update_wall_sprite_edge", "m", 
+		actionManager->addAction("update_wall_sprite_edge", "m", this,
 			[this, &db]() {
 			//fix last line
 			int i = 0;
@@ -557,6 +562,13 @@ void STWallBuilder::setCorrectTex(Sprite* sp) {
 		// if the sprite gets wall body,
 		if (std::get<0>(_vecRect[index]).containsPoint(p)) {
 			sp->setVisible(true);
+			sp->setSpriteFrame(
+				_wallSpriteFrameName[
+					_wallType[std::get<1>(
+						_vecRect[index])
+					]
+				]
+			);
 			return;
 		}
 		index++;
@@ -569,7 +581,6 @@ bool STWallBuilder::init()
 	if (!Node::init()) return false;
 
 	_batch = SpriteBatchNode::create("img/sprites2.png");
-	auto _batch2 = SpriteBatchNode::create("img/a_tile2.png");
 	this->addChild(_batch);
 	//set width and height devide with 20.
 	// 960->48, 540->27, 530->27.
@@ -582,6 +593,10 @@ bool STWallBuilder::init()
 	// initial Sprite Frame
 	auto spcache = SpriteFrameCache::getInstance();
 	spcache->addSpriteFramesWithFile("img/sprites2.plist");
+
+	// wall sprite name initializing.
+	_wallSpriteFrameName[WallType::Breakable] = "cracked.png";
+	_wallSpriteFrameName[WallType::Solid] = "tile2.png";
 
 	auto& db = IngameScene::getInstance()->getDebugBox()->get();
 	
@@ -599,7 +614,6 @@ bool STWallBuilder::init()
 			
 			//sprite->getTexture()->setTexParameters()
 			sprite->setPosition(Vec2(i + 0.5f, j + 0.5f) * IngameScene::OneBlockPx);
-			auto sprite2 = Sprite::create("img/a_tile2.png");
 			//sprite->getTexture()-set
 			sprite->setScaleX(IngameScene::OneBlockPx / sprite->getContentSize().width);
 			sprite->setScaleY(IngameScene::OneBlockPx / sprite->getContentSize().height);
@@ -608,6 +622,7 @@ bool STWallBuilder::init()
 			//sprite->setOpacity(120);
 			sprite->setVisible(false);
 			_batch->addChild(sprite);
+			//this->addChild(sprite);
 			_mapSprites[i][j] = sprite;
 		}
 	}
@@ -636,28 +651,31 @@ bool STWallBuilder::init()
 
 	// update closest rects.
 	auto acMan = apHookActionManager::getInstance();
-	acMan->addAction("update_closest_rect", "m", [this, &db]() {
+	acMan->addAction("update_closest_rect", "m", this, [this, &db]() {
 		auto size = Director::getInstance()->getVisibleSize();
 		auto midPoint = -IngameScene::getInstance()->getMasterFieldPosition() + Vec2(size.width, size.height) / 2;
 		db << "x:" << midPoint.x << " y:" << midPoint.y << DebugBox::push;
 		//_sortedByDistance.clear();
-		std::sort(_vecRect.begin(), _vecRect.end(),
-			[midPoint](const tuple<Rect, b2Body*>& left, const tuple<Rect, b2Body*>& right) -> bool {
-			auto leftVec = Vec2(std::get<0>(left).getMidX(), std::get<0>(left).getMidY());
-			auto rightVec = Vec2(std::get<0>(right).getMidX(), std::get<0>(right).getMidY());
-			return midPoint.getDistanceSq(leftVec) < midPoint.getDistanceSq(rightVec);
-		});
+		if (_vecRect.size() > 0) {
+			std::sort(_vecRect.begin(), _vecRect.end(),
+				[midPoint](const tuple<Rect, b2Body*>& left, const tuple<Rect, b2Body*>& right) -> bool {
+				auto leftVec = Vec2(std::get<0>(left).getMidX(), std::get<0>(left).getMidY());
+				auto rightVec = Vec2(std::get<0>(right).getMidX(), std::get<0>(right).getMidY());
+				return midPoint.getDistanceSq(leftVec) < midPoint.getDistanceSq(rightVec);
+			});
+		}
 		db << "update_closest_rect called" << DebugBox::push;
 	});
 
 	//make clip
-	auto clip = ClippingNode::create(_batch);
+	/*auto clip = ClippingNode::create(_batch);
 	
 	auto wallSprite = Sprite::create("img/background4.png");
 	wallSprite->setAnchorPoint(Vec2::ZERO);
 	clip->addChild(wallSprite);
+	clip->setAlphaThreshold(0.3f);
 	auto p = IngameScene::getInstance();
-	p->getCamera()->addChild(clip, 5);
+	p->getCamera()->addChild(clip, 5);*/
 	return true;
 }
 
@@ -1000,9 +1018,9 @@ void STWallBuilder::makeWall(int x, int y, int width, int height)
 	*/
 }
 
-void STWallBuilder::changeWallStatus(b2Body * body, WallType status)
+void STWallBuilder::changeWallStatus(b2Body * body, WallType type)
 {
-	_wallStatus[body] = status;
+	_wallType[body] = type;
 
 	//change all sprites....how?????
 	
@@ -1012,15 +1030,16 @@ void STWallBuilder::changeWallStatus(b2Body * body, WallType status)
 
 }
 
-void STWallBuilder::breakWall(b2Body * body)
+void STWallBuilder::tryBreakWall(b2Body * body)
 {
-	if (_wallStatus.find(body) != _wallStatus.end() &&
-		_wallStatus[body] == WallType::Breakable) {
+	if (_wallType.find(body) != _wallType.end() &&
+		_wallType[body] == WallType::Breakable) {
 
 		// delete all sprite.
-		for (auto& item : _getSpritesByBody[body]) {
+		/*for (auto& item : _getSpritesByBody[body]) {
 			item->removeFromParent();
-		}
+		}*/
+		
 
 		// release box2d.
 		auto taskManager = apAsyncTaskManager::getInstance();
@@ -1029,8 +1048,34 @@ void STWallBuilder::breakWall(b2Body * body)
 		}));
 
 		// remove them all from container.
-		_getSpritesByBody.erase(body);
-		_wallStatus.erase(body);
+		/*_getSpritesByBody.erase(body);*/
+		_wallType.erase(body);
+
+		// remove wall from _vecRect
+		auto it = std::find_if(_vecRect.begin(), _vecRect.end(), 
+			[body](std::add_const<decltype(*_vecRect.begin())&>::type v)->bool {
+			return std::get<1>(v) == body;
+		});
+		Rect rect;
+		if (it != _vecRect.end()) {
+			auto element = *it;
+			rect = std::get<0>(element);
+			_vecRect.erase(it);
+		}
+
+		//make sprite correct
+		int x = rect.origin.x / IngameScene::OneBlockPx;
+		int y = rect.origin.y / IngameScene::OneBlockPx;
+		int w = rect.size.width / IngameScene::OneBlockPx;
+		int h = rect.size.height / IngameScene::OneBlockPx;
+		
+		for (int i = x; i < x + w; i++) {
+			for (int j = y; j < y + h; j++) {
+				_mapSprites[i % _mapArrayWidth][j%_mapArrayHeight]->setVisible(false);
+			}
+		}
+
+
 
 
 		// create Effect
@@ -1040,9 +1085,9 @@ void STWallBuilder::breakWall(b2Body * body)
 
 }
 
-void STWallBuilder::breakWall(b2Fixture * fixture)
+void STWallBuilder::tryBreakWall(b2Fixture * fixture)
 {
-	breakWall(fixture->GetBody());
+	tryBreakWall(fixture->GetBody());
 }
 
 void STWallBuilder::waitForUpdateVecRect()
@@ -1062,6 +1107,18 @@ cocos2d::SpriteBatchNode* STWallBuilder::getBatchSpriteNode(const std::string & 
 
 STWallBuilder::~STWallBuilder()
 {
+}
+
+WallType STWallBuilder::getWallTypeWithName(const std::string & name)
+{
+	auto it = std::find_if(_wallSpriteFrameName.begin(), _wallSpriteFrameName.end(), 
+		[&name](std::add_const<decltype(*_wallSpriteFrameName.begin())&>::type item) {
+		return item.second == name;
+	});
+	if (it != _wallSpriteFrameName.end()) {
+		return it->first;
+	}
+	return WallType::Solid;
 }
 
 

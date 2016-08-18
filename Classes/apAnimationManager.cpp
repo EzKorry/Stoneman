@@ -3,7 +3,10 @@
 #include "IngameScene.h"
 
 namespace arphomod {
-
+void apAnimationManager::detach(cocos2d::Node * node)
+{
+	stopAnimation((Sprite*)node);
+}
 void apAnimationManager::connectWithScheduler(cocos2d::Scheduler * scheduler)
 {
 	if (_scheduleTarget == nullptr) {
@@ -11,6 +14,7 @@ void apAnimationManager::connectWithScheduler(cocos2d::Scheduler * scheduler)
 	}
 	if (_scheduler != nullptr) {
 		_scheduler->unschedule("apAnimationManager", _scheduleTarget);
+		
 	}
 
 	_scheduler = scheduler;
@@ -19,10 +23,20 @@ void apAnimationManager::connectWithScheduler(cocos2d::Scheduler * scheduler)
 		step();
 	}, _scheduleTarget, 1 / 15.f, false, "apAnimationManager");
 }
+
+void apAnimationManager::disconnect() {
+	if (_scheduler) {
+		_scheduler->unschedule("apAnimationManager", _scheduleTarget);
+		_scheduler = nullptr;
+	}
+}
 void apAnimationManager::addNewSpriteSheet(const std::string & plistPath)
 {
 	auto spriteCache = SpriteFrameCache::getInstance();
-	spriteCache->addSpriteFramesWithFile(plistPath);
+	if (!spriteCache->isSpriteFramesWithFileLoaded(plistPath)) {
+		spriteCache->addSpriteFramesWithFile(plistPath);
+	}
+	
 }
 void apAnimationManager::setFrameEvent(const std::string & animationName, int index, const std::string & hookName)
 {
@@ -65,12 +79,12 @@ void apAnimationManager::specifyAnimation(const char * format, const FrameRange 
 }
 void apAnimationManager::playAnimation(Sprite * sprite, const std::string & animationName, bool isLoop)
 {
-	if (_playingAnimations.find(sprite) != _playingAnimations.end()) {
+	/*if (_playingAnimations.find(sprite) != _playingAnimations.end()) {
 		_playingAnimations[sprite].animationName = animationName;
 		_playingAnimations[sprite].nowFrame = 0U;
 	}
-	else if (sprite) {
-		CC_SAFE_RETAIN(sprite);
+	else */if (sprite) {
+		///CC_SAFE_RETAIN(sprite);
 		_playingAnimations.emplace(sprite, PlayingAnimation(animationName, 0U));
 	}
 	
@@ -82,8 +96,9 @@ void apAnimationManager::playAnimation(Sprite * sprite, const std::string & anim
 void apAnimationManager::stopAnimation(Sprite * sprite)
 {
 	if (sprite && _playingAnimations.find(sprite) != _playingAnimations.end()) {
-		_playingAnimations[sprite].animationName = "";
-		_playingAnimations[sprite].nowFrame = 0U;
+		_playingAnimations.erase(sprite);
+		/*_playingAnimations[sprite].animationName = "";
+		_playingAnimations[sprite].nowFrame = 0U;*/
 	}
 }
 
@@ -91,7 +106,10 @@ Sprite* apAnimationManager::createSprite(const std::string & animationName)
 {
 	auto animation = AnimationCache::getInstance()->getAnimation(animationName);
 	if (animation) {
-		return Sprite::createWithSpriteFrame(animation->getFrames().front()->getSpriteFrame());
+		auto sprite = Sprite::createWithSpriteFrame(animation->getFrames().front()->getSpriteFrame());
+		auto detachManager = apDetachManager::getInstance();
+		detachManager->addNode(sprite, apDetachManagerType::AnimationManager);
+		return sprite;
 	}
 	return nullptr;
 	
@@ -107,6 +125,7 @@ void apAnimationManager::step()
 		auto& aniInfo = item.second;
 		auto& name = aniInfo.animationName;
 
+		// if animation exists,
 		if (animationCache->getAnimation(name)) {
 
 
@@ -122,7 +141,7 @@ void apAnimationManager::step()
 			// go animation
 			else {
 				sprite->setDisplayFrameWithAnimationName(name, nowFrame);
-
+				
 				// hook action execute.
 				auto& userInfo = frames.at(nowFrame)->getUserInfo();
 				if (userInfo.find("hook_name") != userInfo.end()) {
@@ -152,7 +171,7 @@ apAnimationManager::~apAnimationManager()
 	CC_SAFE_RELEASE(_scheduleTarget);
 
 	for (auto& item : _playingAnimations) {
-		CC_SAFE_RELEASE(item.first);
+		///CC_SAFE_RELEASE(item.first);
 	}
 }
 

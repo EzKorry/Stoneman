@@ -158,6 +158,9 @@ void STEffectGenerator::generateEffect(const STEffectConfigure & configure, cons
 			world->DestroyBody(pBody);
 		});
 		auto sequence = Sequence::create(wait, opacity, del, nullptr);
+		sequence->setTag(F_EFFECT);
+		auto detachManager = apDetachManager::getInstance();
+		detachManager->addNode(sp);
 		IngameScene::getInstance()->runLocalAction(sp, sequence);
 		//sp->runAction(sequence);
 		

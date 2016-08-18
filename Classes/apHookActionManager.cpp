@@ -36,6 +36,7 @@ void apHookActionManager::addAction(const std::string& hook, const std::string& 
 std::shared_ptr<apHookActionManager> apHookActionManager::_sp = nullptr;
 
 
+
 /*
 std::shared_ptr<apHookActionManager> apHookActionManager::runHook(const std::string& hook) {
 
@@ -53,6 +54,14 @@ std::shared_ptr<apHookActionManager> apHookActionManager::runHook(const std::str
 	return _sp;
 
 }*/
+
+void apHookActionManager::detach(cocos2d::Node * node)
+{
+	for (auto& item : _deleter) {
+		auto& func = item;
+		func(node);
+	}
+}
 
 // remove Action.
 /*

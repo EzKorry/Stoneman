@@ -32,7 +32,7 @@ using C_PostSolve = std::function<void(b2Contact*, const b2ContactImpulse*, b2Fi
 class STContactListener: public b2ContactListener {
 public:
 
-	STContactListener(IngameScene* p);
+	STContactListener();
 	virtual ~STContactListener();
 	virtual void BeginContact(b2Contact* contact);
 	virtual void EndContact(b2Contact* contact);
@@ -65,7 +65,7 @@ private:
 	//std::shared_ptr<apHookActionManager> _actionManager;
 	//std::shared_ptr<apDataManager> _dataManager;
 
-	IngameScene* _mainScene {nullptr};
+	//IngameScene* _mainScene {nullptr};
 };
 
 #endif /* STCONTACTLISTENER_H_ */

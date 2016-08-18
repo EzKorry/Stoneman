@@ -195,7 +195,7 @@
 				"x": 5,
 				"y": 6,
 				"type": "breakable_wall",
-				"tile": "tile2",
+				"tile": "cracked",
 				"name": "breakable_1"
 			}, {
 				"x": -5,

@@ -7,7 +7,7 @@
 			<key>cracked.png</key>
 			<dict>
 				<key>frame</key>
-				<string>{{0,0},{40,40}}</string>
+				<string>{{0,42},{40,40}}</string>
 				<key>offset</key>
 				<string>{0,0}</string>
 				<key>rotated</key>
@@ -21,7 +21,7 @@
 			<key>tile2.png</key>
 			<dict>
 				<key>frame</key>
-				<string>{{0,42},{40,40}}</string>
+				<string>{{0,0},{40,40}}</string>
 				<key>offset</key>
 				<string>{0,0}</string>
 				<key>rotated</key>

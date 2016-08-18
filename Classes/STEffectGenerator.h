@@ -14,6 +14,10 @@ enum class STEffectType {
 	Boom
 };
 
+enum APActionFlags {
+	F_EFFECT = 0x0001
+};
+
 struct STEffectConfigure {
 	// particles must have the same weight(10);
 

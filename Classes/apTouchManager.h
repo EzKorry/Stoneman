@@ -12,6 +12,7 @@
 #include <string>
 #include "cocos2d.h"
 #include "apHookActionManager.h"
+#include "apDetachManager.h"
 
 
 /* how to use:
@@ -82,10 +83,10 @@ struct APTouchData {
 	int order = 0;
 };
 
-class APTouchManager{
+class APTouchManager : public apDetachInterface {
 public:
 
-
+	virtual void detach(cocos2d::Node* node) override;
 
 	// initialize Nodes
 	// default order: 0
@@ -113,8 +114,9 @@ public:
 		if(_amp == nullptr) {
 			_amp = apHookActionManager::getInstance();
 		}
-		_amp->addAction(hook, behaviorTag, std::forward<TFunc>(behavior));
+		_amp->addAction(hook, behaviorTag, node, std::forward<TFunc>(behavior));
 		_d[node].hook.emplace(timing, hook);
+
 		//cocos2d::log("addBehavior Executed!! string:%s, behaviorTag:%s", hook.c_str(), behaviorTag.c_str());
 	}
 

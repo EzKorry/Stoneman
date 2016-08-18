@@ -36,7 +36,7 @@ enum EntityCategory {
 
 enum ScheduleUpdateFuncPriority {
 	P_WORLDSTEP = 1,
-	P_WALLCHECK = 3,
+	P_AFTER_WORLDSTEP = 2,
 	P_CAMERA = 5,
 	P_REPLACEMAPSPRITES = 6
 };
@@ -268,7 +268,9 @@ private:
 	std::string _level{ "" };
 
 	// path string store map
-	std::map<string, string> _path;
+	std::vector<string> _plistPath;
+
+	std::map<string, string> _spriteFrames;
 
 	// background node Map
 	// ratio: 1 = absolutely like masterfield, 0 = stick at camera.
@@ -321,7 +323,7 @@ private:
 	// used when keyboard testing
 	int _keyCount = 0;
 
-	cocos2d::Node* _box2dWorld { nullptr };
+	//cocos2d::Node* _box2dWorld { nullptr };
 
 	
 };

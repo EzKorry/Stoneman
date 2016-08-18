@@ -12,7 +12,9 @@
 #include <memory>
 #include <unordered_map>
 #include <set>
+#include <apDetachManager.h>
 #include "function_traits.h"
+#include <algorithm>
 
 namespace arphomod {
 using namespace std;
@@ -55,22 +57,33 @@ class apActionFuncImpl : public apActionFunc {
 // ***************************************
 
 // action's parameter types can't be a reference or const. (for my weak c++..)
-class apHookActionManager {
+using apActionDeleter = function<void(cocos2d::Node*)>;
+using apActionTargetMap = unordered_map<cocos2d::Node*, vector<tuple<string, string>>>;
+template <class Func>
+using apActionList = unordered_map<string, unordered_map<string, Func>>;
+class apHookActionManager : public apDetachInterface {
 private:
+	
+
 	template <class Func>
 	class Actions {
 	public:
-		static unordered_map<string, unordered_map<string, Func>> list;
+		static apActionList<Func> list;
+
+		// target, hook, tag.
+		static apActionTargetMap targetMap;
+		static void deleter(cocos2d::Node* node);
 		using type = Func;
 
 	};
 
 	
+	
 public:
 
 	
 
-
+	virtual void detach(cocos2d::Node* node) override;
 
 
 	apHookActionManager();
@@ -99,20 +112,51 @@ public:
 
 	}*/
 
-	//add function to hook.
-	template<class TString1, class TString2, class TFunc>
-	shared_ptr<apHookActionManager> addAction(TString1&& hook, TString2&& tag, TFunc&& action) {
+	// add function to hook.
+	// if the target on exit, action will be removed too.
+	// tag is the action's name.
+	// we can run hook after a while.
 	//	using TFunc = std::function<void(Args...)>;
+	template<class TString1, class TString2, class TFunc>
+	shared_ptr<apHookActionManager> addAction(TString1&& hook, TString2&& tag, cocos2d::Node* target, TFunc&& action) {
+	
 
-		auto& list = Actions<
+		// if target is null, exit!!
+		CCASSERT(target, "aphookactionmanager add Action target must not be null");
+
+		using TActions = Actions<
 			typename function_traits<
 				typename std::decay<TFunc>::type
 			>::function_type_decayed
-		>::list;
+		>;
+		auto& list = TActions::list;
+		auto& deleter = TActions::deleter;
+		auto& targetVector = TActions::targetMap[target];
 		//addHook(std::forward<TString1>(hook));
 
 		// if tag already exists, no execution.
 		list[std::forward<TString1>(hook)].emplace(std::forward<TString2>(tag), std::forward<TFunc>(action));
+		
+		tuple<string, string> hook_key_pair = make_tuple(
+			std::forward<TString1>(hook),
+			std::forward<TString2>(tag)
+		);
+
+		// if not found,
+		if (std::find(targetVector.begin(), targetVector.end(), hook_key_pair) == targetVector.end()) {
+			targetVector.emplace_back(hook_key_pair);
+		}
+		
+		// if the node on exit, HookActionManager will call this.
+		if (std::find(_deleter.begin(), _deleter.end(), &deleter) == _deleter.end()) {
+			_deleter.emplace_back(&deleter);
+		}
+
+		// add detach manager.
+		auto detachManager = apDetachManager::getInstance();
+		detachManager->addNode(target, apDetachManagerType::HookActionManager);
+		
+		
 		return _sp;
 
 	}
@@ -139,10 +183,13 @@ public:
 	shared_ptr<apHookActionManager> runHook(TString&& hook) {
 		// if hook found,
 		using ActionType = Actions<std::function<void()>>;
-		if (ActionType::list.find(forward<TString>(hook)) != ActionType::list.end()) {
+		auto& list = ActionType::list;
+		if (list.find(forward<TString>(hook)) != list.end()) {
 
 			// run each function.
-			for (auto& item : ActionType::list[forward<TString>(hook)]) {
+			// seperate from REAL list because of deleting action while that action running.
+			auto actionToRun = list[forward<TString>(hook)];
+			for (auto& item : actionToRun) {
 				item.second();
 			}
 		}
@@ -153,8 +200,9 @@ public:
 	template<class TString, class... Args>
 	shared_ptr<apHookActionManager> runHook(TString&& hook, Args&&... args) {
 		using ActionType = Actions<std::function<void(typename std::decay<Args>::type...)>>;
-		if (ActionType::list.find(forward<TString>(hook)) != ActionType::list.end()) {
-			for (auto& item : ActionType::list[forward<TString>(hook)]) {
+		auto& list = ActionType::list;
+		if (list.find(forward<TString>(hook)) != list.end()) {
+			for (auto& item : list[forward<TString>(hook)]) {
 				item.second(std::forward<Args>(args)...);
 			}
 		}
@@ -205,6 +253,11 @@ public:
 		return _sp;
 	}
 
+	template<class Func>
+	static apActionList<Func>& getActionList() {
+		return Actions<Func>::list;
+	}
+
 	// singleton.
 	static shared_ptr<apHookActionManager> getInstance() {
 
@@ -227,12 +280,42 @@ private:
 	//apHookActionContainer _actions;
 
 	static shared_ptr<apHookActionManager> _sp;
+	std::vector<void (*)(cocos2d::Node*)> _deleter;
 
 	
 };
 
+/*template<class Func>
+apActionDeleter apHookActionManager::Actions<Func>::deleter = [](cocos2d::Node* node) {
+	// if found,
+	
+};*/
+
 template <class Func>
-unordered_map<string, unordered_map<string, Func>> apHookActionManager::Actions<Func>::list = unordered_map<string, unordered_map<string, Func>>();
+apActionList<Func> apHookActionManager::Actions<Func>::list = apActionList<Func>();
+
+template <class Func>
+apActionTargetMap apHookActionManager::Actions<Func>::targetMap =
+apActionTargetMap();
+
+template<class Func>
+inline void apHookActionManager::Actions<Func>::deleter(cocos2d::Node * node)
+{
+	if (targetMap.find(node) != targetMap.end()) {
+		for (auto& item : targetMap[node]) {
+			auto& hookToDelete = std::get<0>(item);
+			auto& tagToDelete = std::get<1>(item);
+			//	auto& list = apHookActionManager::Actions<Func>::list;
+			auto& l = getActionList<Func>();
+			type t;
+			if (l.find(hookToDelete) != l.end()) {
+				l[hookToDelete].erase(tagToDelete);
+			}
+
+
+		}
+	}
+}
 
 } /* namespace arphomod */
 

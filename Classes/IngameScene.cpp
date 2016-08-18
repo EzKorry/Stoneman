@@ -36,6 +36,8 @@ IngameScene* IngameScene::_uniqueScene = nullptr;
 ActionManager* IngameScene::_localActionManager = nullptr;
 Scheduler* IngameScene::_localScheduler = nullptr;
 
+
+
 bool IngameScene::init() {
 
 	if(!Scene::init()) return false;
@@ -73,7 +75,7 @@ void IngameScene::appInit()
 
 
 	auto actionManager = apHookActionManager::getInstance();
-
+	
 	//json Test
 	/*json j;
 	j.push_back("foo");
@@ -110,17 +112,22 @@ void IngameScene::appInit()
 	_localActionManager = new (std::nothrow) ActionManager();
 	_localScheduler->scheduleUpdate(_localActionManager, Scheduler::PRIORITY_NON_SYSTEM_MIN, false);
 
+	// connect with detach manager for nodes detach
+	auto detachManager = apDetachManager::getInstance();
+	detachManager->addActionManager(_localActionManager);
+	detachManager->addScheduler(_localScheduler);
+
 	// updateCaller initialize.
 	_localUpdater = make_shared<UpdateCaller>();
 	_globalUpdater = make_shared<UpdateCaller>();
 	_localUpdater->initWithScheduler(_localScheduler, "localUpdater");
 	_globalUpdater->initWithScheduler(getScheduler(), "globalScheduler");
-	boost::coroutines::symmetric_coroutine<void>::call_type updateCallFuncs(
+	/*boost::coroutines::symmetric_coroutine<void>::call_type updateCallFuncs(
 			[this](boost::coroutines::symmetric_coroutine<void>::yield_type& yield) {
-	});
+	});*/
 
 	
-	// Json load
+	// Json load map file.
 	auto js = fu->getStringFromFile("map3.json");
 	_maps.Parse(js.c_str());
 
@@ -133,7 +140,6 @@ void IngameScene::appInit()
 	_camera = STCamera::create();
 	auto touchManager = APTouchManager::getInstance();
 	_masterField = Node::create();
-	_box2dWorld = Node::create();
 	_camera->setField(_masterField);
 	_backgroundField = Node::create();
 	
@@ -141,7 +147,6 @@ void IngameScene::appInit()
 	this->addChild(_camera, 5, "camera");
 	this->addChild(_masterField, 3, "masterField");
 	this->addChild(_backgroundField, 1, "ingameBgNode");
-	_masterField->addChild(_box2dWorld, 0, "box2dWorld");
 
 	//color setting
 	_colors["default"] = Color4B(255, 255, 255, 255);
@@ -150,12 +155,22 @@ void IngameScene::appInit()
 	_colors["bg1-3"] = Color4B(255, 214, 204, 255);
 
 	//image or resource path setting.
-	_path["rightButton"] = "img/button_right.png";
-	_path["leftButton"] = "img/button_left.png";
-	_path["jumpButton"] = "img/button_jump.png";
-	_path["skillButton"] = "img/button_skill.png";
+	_spriteFrames["button_right_onclick"] = "right-onclick.png";
+	_spriteFrames["button_right_noclick"] = "right-noclick.png";
+	_spriteFrames["button_left_onclick"] = "left-onclick.png";
+	_spriteFrames["button_left_noclick"] = "left-noclick.png";
+	_spriteFrames["button_skill_onclick"] = "skill-onclick.png";
+	_spriteFrames["button_skill_noclick"] = "skill-noclick.png";
+	_spriteFrames["button_jump_onclick"] = "jump-onclick.png";
+	_spriteFrames["button_jump_noclick"] = "jump-noclick.png";
+
+	_plistPath.emplace_back("img/button_sprites.plist");
 
 
+	auto spriteFrameCacheManager = SpriteFrameCache::getInstance();
+	for (auto& item : _plistPath) {
+		spriteFrameCacheManager->addSpriteFramesWithFile(item);
+	}
 
 	// font test
 	/*TTFConfig conf("fonts/SpoqaHsRegular.ttf", 24);
@@ -190,8 +205,8 @@ void IngameScene::organizeScene()
 		logo->runAction(sequence);
 
 	};
-	actionManager->addAction("game_start", "show_logo", showLogo);
-	actionManager->addAction("game_start", "default_background", defaultBackground);
+	actionManager->addAction("game_start", "show_logo", this,showLogo);
+	actionManager->addAction("game_start", "default_background", this,defaultBackground);
 
 
 	auto delLogo = [this]() {
@@ -200,7 +215,7 @@ void IngameScene::organizeScene()
 			apHookActionManager::getInstance()->runHook("show_stage_select");
 		}, 5.f, "delLogo");
 	};
-	actionManager->addAction("game_start", "del_logo", std::move(delLogo));
+	actionManager->addAction("game_start", "del_logo",this, std::move(delLogo));
 
 	// display stage select scene.
 	auto displayStageSelect = [this]() {
@@ -218,22 +233,25 @@ void IngameScene::organizeScene()
 		touchManager->registerNode(label, APTouchManager::createCheckerWithRect(label,
 			Rect(-labelSize.width / 2, -labelSize.height / 2, labelSize.width, labelSize.height)));
 		touchManager->addHook(label, APTouchType::EndedIn, "stage_1_clicked");
+		
+		// stage 1 Start Action
+		auto stage1Start = [this]() {
+			apHookActionManager::getInstance()
+				->runHook("out_stage")
+				->runHook("enter_stage1");
+		};
+		apHookActionManager::getInstance()->addAction("stage_1_clicked", "stage_1_start",stageSelectNode, std::move(stage1Start));
 	};
-	actionManager->addAction("show_stage_select", "display_stage_select", std::move(displayStageSelect));
+	actionManager->addAction("show_stage_select", "display_stage_select",this, std::move(displayStageSelect));
 
-	// stage 1 Start Action
-	auto stage1Start = [this]() {
-		apHookActionManager::getInstance()
-			->runHook("out_stage")
-			->runHook("enter_stage1");
-	};
-	actionManager->addAction("stage_1_clicked", "stage_1_start", std::move(stage1Start));
+	
+	
 
 	// remove Stage.
 	auto removeStage = [this]() {
 		_masterField->removeChildByName("stageSelectNode");
 	};
-	actionManager->addAction("out_stage", "remove_stage", std::move(removeStage));
+	actionManager->addAction("out_stage", "remove_stage",this, std::move(removeStage));
 
 	// display Stage 1
 	auto displayStage1 = [this]() {
@@ -246,8 +264,36 @@ void IngameScene::organizeScene()
 		apHookActionManager::getInstance()
 			->runHook("after_display_stage1");
 	};
-	actionManager->addAction("enter_stage1", "display_stage1", std::move(displayStage1));
+	actionManager->addAction("enter_stage1", "display_stage1", this,std::move(displayStage1));
 	
+	actionManager->addAction("back_to_stage_select", "back_to_stage_select",this, [this]() {
+		apHookActionManager::getInstance()
+			->runHook("remove_stage")
+			->runHook("show_stage_select");
+	});
+	actionManager->addAction("back_to_stage_select", "default_background",this, defaultBackground);
+	
+	// restore all of the stage when it before start.
+	actionManager->addAction("remove_stage", "m",this, [this]() {
+
+		_localActionManager->removeAllActions();
+		apAnimationManager::getInstance()->disconnect();
+		_localUpdater->delFunc(P_WORLDSTEP);
+		_localUpdater->delFunc(P_AFTER_WORLDSTEP);
+		_localUpdater->delFunc(P_CAMERA);
+		_localUpdater->delFunc(P_REPLACEMAPSPRITES);
+
+		_camera->removeAllChildren();
+		_masterField->removeAllChildren();
+		_masterField->setPosition(Vec2::ZERO);
+		_backgroundField->removeAllChildren();
+
+		_backgroundFollowRatio.clear();
+
+		_debugBox->get() << "world count: " << world.use_count() << DebugBox::push;
+		world = nullptr;
+	});
+
 	/*auto debugRefreshPics = [this]() {
 		std::map<std::string, std::string> m;
 		m["leftButton"] = "arrow-left.png";
@@ -427,7 +473,7 @@ void IngameScene::gameInterface()
 	//---------------
 	//	 move left button
 	//---------------
-	auto leftButton = Sprite::create(_path["leftButton"]);
+	auto leftButton = Sprite::createWithSpriteFrameName(_spriteFrames["button_left_noclick"]);
 	leftButton->setPosition(buttonSize.width / 2, buttonSize.height / 2); // 75,75
 	leftButton->setScale(buttonSpriteSize.width / leftButton->getContentSize().width);
 	_camera->addChild(leftButton, 10, "leftButton");
@@ -471,7 +517,7 @@ void IngameScene::gameInterface()
 	//---------------
 	// move right button
 	//---------------
-	auto rightButton = Sprite::create(_path["rightButton"]);
+	auto rightButton = Sprite::createWithSpriteFrameName(_spriteFrames["button_right_noclick"]);
 	rightButton->setPosition(buttonSize.width * 1.5f, buttonSize.height / 2);
 	rightButton->setScale(buttonSpriteSize.width / rightButton->getContentSize().width);
 	_camera->addChild(rightButton, 10, "rightButton");
@@ -504,7 +550,7 @@ void IngameScene::gameInterface()
 	//---------------------
 	// jump button
 	//--------------------
-	auto upButton = Sprite::create(_path["jumpButton"]);
+	auto upButton = Sprite::createWithSpriteFrameName(_spriteFrames["button_jump_noclick"]);
 	auto upButtonSize = buttonSize;//upButton->getContentSize();
 	upButton->setPosition(visibleSize.width - upButtonSize.width / 2, upButtonSize.height / 2);
 	upButton->setScale(buttonSpriteSize.width / upButton->getContentSize().width);
@@ -527,7 +573,7 @@ void IngameScene::gameInterface()
 	//---------------------
 	// dash button
 	//--------------------
-	auto skillButton = Sprite::create(_path["skillButton"]);
+	auto skillButton = Sprite::createWithSpriteFrameName(_spriteFrames["button_skill_noclick"]);
 	auto skillButtonSize = buttonSize;//skillButton->getContentSize();
 	skillButton->setPosition(visibleSize.width - skillButtonSize.width *1.5f, skillButtonSize.height / 2);
 	skillButton->setScale(buttonSpriteSize.width / skillButton->getContentSize().width);
@@ -565,7 +611,12 @@ void IngameScene::gameInterface()
 		case K::KEY_L:
 			apHookActionManager::getInstance()->runHook("jump_clicked");
 			break;
+		case K::KEY_Q:
+			apHookActionManager::getInstance()->runHook("back_to_stage_select");
+			break;
 		default:
+			auto aniManager = apAnimationManager::getInstance();
+			aniManager->playAnimation(_sp, "walk", false);
 			break;
 
 		}
@@ -575,8 +626,7 @@ void IngameScene::gameInterface()
 		static_cast<Sprite*>(_sp)->setSpriteFrame(frameToDisplay);
 		*/
 
-		auto aniManager = apAnimationManager::getInstance();
-		aniManager->playAnimation(_sp, "walk", false);
+		
 		//cocos2d::log("Key with keycode %d pressed", keyCode);
 	};
 	keyboardListener->onKeyReleased = [this, cancelMove, leftOn, rightOn](EventKeyboard::KeyCode keyCode, Event* event) {
@@ -608,7 +658,7 @@ void IngameScene::gameInterface()
 
 		}
 	};
-	_eventDispatcher->addEventListenerWithSceneGraphPriority(keyboardListener, this);
+	_eventDispatcher->addEventListenerWithSceneGraphPriority(keyboardListener, upButton);
 
 	// background 
 	/*
@@ -618,7 +668,7 @@ void IngameScene::gameInterface()
 
 	// hookActions
 	auto am = apHookActionManager::getInstance();
-	am->addAction("jump_clicked", "do_jump", [this]()->void {
+	am->addAction("jump_clicked", "do_jump", upButton, [this]()->void {
 		// jump must exist only 1 until hit the ground.
 		if (_floorFixtures.empty()) return;
 
@@ -630,7 +680,7 @@ void IngameScene::gameInterface()
 	});
 
 	//skill(dash) button clicked
-	am->addAction("skill_clicked", "do_skill", [this]()->void {
+	am->addAction("skill_clicked", "do_skill", skillButton, [this]()->void {
 
 		jumpTouchEnd();
 		
@@ -657,7 +707,7 @@ void IngameScene::gameInterface()
 	});
 
 	//dash end event
-	am->addAction("dash_end", "do_dash_end", [this]()->void {
+	am->addAction("dash_end", "do_dash_end", skillButton, [this]()->void {
 		_isDashing = false;
 		unscheduleLocally("endDash");
 		_airResistance = _originAirResistance;
@@ -681,14 +731,14 @@ void IngameScene::gameInterface()
 				std::sin(radian) * bouncePower / SCALE_RATIO),
 			_charBody->GetWorldCenter(), true);
 	};
-	am->addAction("character_dash_wall_right", "bounce_right", [this, bounce](float power)->void {
+	am->addAction("character_dash_wall_right", "bounce_right", _wallBuilder, [this, bounce](float power)->void {
 		bounce(power, true);
 	});
-	am->addAction("character_dash_wall_left", "bounce_left", [this, bounce](float power)->void {
+	am->addAction("character_dash_wall_left", "bounce_left", _wallBuilder, [this, bounce](float power)->void {
 		bounce(power, false);
 	});
 
-	am->addAction("character_hit_ground", "camera_vibration_and_effect", [this](float power)->void {
+	am->addAction("character_hit_ground", "camera_vibration_and_effect", _wallBuilder, [this](float power)->void {
 		_camera->vibrateCameraDirection(
 			power * _cameraVRatio,
 			power * _cameraVDuration,
@@ -711,7 +761,7 @@ void IngameScene::initializePhysics(const std::string& level)
 	auto gravity = b2Vec2(0.0f, -40.0f);
 	world = std::make_shared<b2World>(gravity);
 
-	_cl_p = std::make_shared<STContactListener>(this);
+	_cl_p = std::make_shared<STContactListener>();
 	world->SetContactListener(_cl_p.get());
 
 #if  (CC_TARGET_PLATFORM == CC_PLATFORM_WIN32)
@@ -732,6 +782,7 @@ void IngameScene::initializePhysics(const std::string& level)
 		_maps["level"][_level.c_str()]["size"]["w"].GetInt(),
 		_maps["level"][_level.c_str()]["size"]["h"].GetInt());
 	_masterField->addChild(_wallBuilder, 10, "wallBuilder");
+
 
 	//_wallBuilder->makeWall(-20, -20, 40, 40);
 	//_wallBuilder->makeWall(20, 0, 7, 10);
@@ -884,21 +935,15 @@ void IngameScene::initializePhysics(const std::string& level)
 	});
 	_eventDispatcher->addEventListenerWithFixedPriority(listenerAnimationFrameDisplayed, 1);
 	*/
-	auto hookActionManager = apHookActionManager::getInstance();
-	hookActionManager->addAction("power_frame_event", "gg", [this]() {
-		_debugBox->get() << "frame 5 reached!!!" << DebugBox::push;
-	});
+	
 	
 	_sp = aniManager->createSprite("walk");
-	//runLocalAction(_sp, RepeatForever::create(Animate::create(animationWalk)));
-	//runLocalAction(_sp, Animate::create(animationWalk));
-	//_sp->runAction(RepeatForever::create(Animate::create(animationWalk)));
 	_sp->setScale(0.375f);
-	//_sp->setScaleX(_boxWidth / _sp->getContentSize().width);
-	//_sp->setScaleY(_boxHeight / _sp->getContentSize().height);
-	//_masterField->addChild(_sp);
-	auto moveRight = MoveBy::create(1, Vec2(50, 0));
-	runLocalAction(_sp, moveRight);
+
+	auto hookActionManager = apHookActionManager::getInstance();
+	hookActionManager->addAction("power_frame_event", "gg", _sp, [this]() {
+		_debugBox->get() << "frame 5 reached!!!" << DebugBox::push;
+	});
 
 	b2PolygonShape charShape;
 	// box2d의 setbox는 가로세로가 아니라 반지름이랑 개념이 비슷하다. 가운데에서부터 한변 까지의 길이임. 그래서 /2를 해줌.
@@ -1048,7 +1093,7 @@ void IngameScene::initializePhysics(const std::string& level)
 
 	_cl_p->setPostSolve(_charBody,
 		[this, isNormalDirection](b2Contact* contact, const b2ContactImpulse* impulse, b2Fixture* other) {
-
+		
 		b2WorldManifold worldManifold;
 		contact->GetWorldManifold(&worldManifold);
 		auto actionManager = apHookActionManager::getInstance();
@@ -1086,28 +1131,29 @@ void IngameScene::initializePhysics(const std::string& level)
 		// hit walls if character is moving left
 		else if (/*(impulse->normalImpulses[0] >= 0.01f ||
 			impulse->normalImpulses[1] >= 0.01f) &&*/
-			isNormalDirection(worldManifold, C_RIGHT)) {
+			isNormalDirection(worldManifold, C_RIGHT) ||
+			isNormalDirection(worldManifold, C_LEFT)) {
+			auto isRight = false;
+			if (isNormalDirection(worldManifold, C_RIGHT)) isRight = true;
 
 			if (_isDashing == true) {
-				actionManager->runHook("character_dash_wall_left", impulse->normalImpulses[0]);
+				if (isRight) {
+					actionManager->runHook("character_dash_wall_left", impulse->normalImpulses[0]);
+				}
+				else {
+					actionManager->runHook("character_dash_wall_right", impulse->normalImpulses[0]);
+				}
+				
 				actionManager->runHook("dash_end");
+				actionManager->addAction("after_worldstep_once", "break_wall_left", _wallBuilder,
+					[this, other]() {
+					_wallBuilder->tryBreakWall(other);
+				});
+
 			}
 
 			//characterHitLeftWall(impulse->normalImpulses[0]);
 			//_characterHitLeftWallYes = true;
-		}
-
-		// hit walls if character is moving right
-		else if (/*(impulse->normalImpulses[0] >= 0.01f ||
-			impulse->normalImpulses[1] >= 0.01f) &&*/
-			isNormalDirection(worldManifold, C_LEFT)) {
-
-			if (_isDashing == true) {
-				actionManager->runHook("character_dash_wall_right", impulse->normalImpulses[0]);
-				actionManager->runHook("dash_end");
-			}
-			//characterHitRightWall(impulse->normalImpulses[0]);
-			//_characterHitRightWallYes = true;
 		}
 
 	});
@@ -1126,8 +1172,14 @@ void IngameScene::initializePhysics(const std::string& level)
 
 
 	// set status if the character Hits Ground or Wall.
-	/*_localUpdater->addFunc(P_WALLCHECK, [this](float)->void {
-		if (_characterHitGroundYes) {
+	_localUpdater->addFunc(P_AFTER_WORLDSTEP, [this](float)->void {
+		auto acMan = apHookActionManager::getInstance();
+		acMan->runHook("after_worldstep_once");
+		acMan->removeHook("after_worldstep_once");
+		acMan->runHook("after_worldstep");
+
+		
+		/*if (_characterHitGroundYes) {
 			_characterHitGroundYes = false;
 			characterHitGround(_hitPower);
 
@@ -1139,9 +1191,9 @@ void IngameScene::initializePhysics(const std::string& level)
 		else if (_characterHitRightWallYes) {
 			_characterHitRightWallYes = false;
 			characterHitRightWall(_hitPower);
-		}
+		}*/
 	
-	});*/
+	});
 
 
 	// physical things.
