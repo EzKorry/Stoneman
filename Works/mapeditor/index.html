@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Map Editor</title>
+    <script src="jquery-3.1.0.js" charset="utf-8"></script>
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body>
+    <input type="file" id="files" name="files[]" multiple />
+<output id="list"></output>
+<div class="power">
+
+</div>
+
+<div id="editor">
+  <div class="buttons">
+    <button type="button" name="make_square" onclick="make_square_clicked()">사각형</button>
+    <button type="button" name="move" onclick="move_clicked()">움직임</button>
+    <button type="button" name="select" onclick="select_clicked()">선택</button>
+    <!--<button type="button" name="starting_point" onclick="starting_point_clicked()">시작지점</button>-->
+    <button type="button" name="save" onclick="save_clicked()">저장</button>
+    <div class="inputs">
+      <label for="width">가로</label>
+      <input type="text" name="width" value="" size="10">
+      <label for="height">세로</label>
+      <input type="text" name="height" value="" size="10">
+      <label for="mapName">맵이름</label>
+      <input type="text" name="mapName" value="" size="10">
+
+    </div>
+
+  </div>
+  <div class="canvas">
+    <div class="drag_cutton"></div>
+    <div class="lines">
+
+    </div>
+    <div class="map_container">
+      <div class="make_square_cutton"></div>
+      <div class="map_elements">
+
+      </div>
+      <div class="points">
+      <div class="point">
+
+      </div></div>
+    </div>
+  </div>
+  <div class="popup">
+    <table>
+      <tr>
+        <td>
+          <label for="wall_name">name</label>
+        </td>
+        <td>
+          <input type="text" id="wall_name" name="wall_name" value="" size="5">
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <label for="wall_type">type</label>
+        </td>
+        <td>
+          <input type="text" id="wall_type" name="wall_type" value="" size="5">
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <label for="wall_x">x</label>
+        </td>
+        <td>
+          <input type="number" id="wall_x" name="wall_x" value="" size="5">
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <label for="wall_y">y</label>
+        </td>
+        <td>
+          <input type="number" id="wall_y" name="wall_y" value="" size="5">
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <label for="wall_width">width</label>
+        </td>
+        <td>
+          <input type="number" id="wall_width" name="wall_width" value="" size="5">
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <label for="wall_height">height</label>
+        </td>
+        <td>
+          <input type="number" id="wall_height" name="wall_height" value="" size="5">
+        </td>
+      </tr>
+    </table>
+    <button type="button" name="save_wall">저장</button>
+    <button type="button" name="remove_wall">삭제</button>
+    <button type="button" name="close_wall">닫기</button>
+  </div>
+</div>
+
+
+<!-- 스크립트 -->
+<script>
+  var onePoint = 20;
+  var map = {};
+  var nowMapName;
+  var wallEditing;
+  var mode = {
+    mode: 1,
+    square: 1,
+    select: 2,
+    move: 3,
+    starting_point: 4,
+    changeMode: function(num) {
+      initialCanvas();
+      nowMode = num;
+      if(num == this.move) {
+        $('.drag_cutton').css('display', 'block');
+      }
+      else if(num == this.square) {
+        $('.make_square_cutton').css('display', 'block');
+      }
+      else if(num == this.starting_point) {
+        $('.starting_point_cutton').css('display', 'block');
+      }
+      //console.log(nowMode);
+    },
+
+    onCanvasDragged: function(e) {
+      if(this.mode == this.move) {
+
+      }
+    },
+    onCanvasClickEnded: function(e) {
+      if(this.mode == this.move) {
+
+      }
+    },
+
+
+
+  };
+
+
+  (function($){
+    $(document).ready(function() {
+      $("input[name=height]").val(100);
+      $("input[name=width]").val(100);
+      $("input[name=mapName]").val('default');
+      nowMapName='default';
+      map['level'] = {};
+      map['level']['default'] = {};
+      map.level.default['size'] = {};
+      map.level.default['size'].w = 100;
+      map.level.default['size'].h = 100;
+      map.level.default.start = {};
+      map.level.default.start.x = 10;
+      map.level.default.start.y = 10;
+      map.level.default.walls = [];
+
+      initialCanvas();
+      updateCanvasSize();
+
+      $("input[name=width]").change(function(e) {
+        var width = parseInt($(this).val());
+        map['level'][nowMapName]['size']['w'] = width;
+        updateCanvasSize();
+      });
+
+      $("input[name=height]").change(function(e) {
+        var height = parseInt($(this).val());
+        map['level'][nowMapName]['size']['h'] = height;
+        updateCanvasSize();
+      });
+
+      $("input[name=mapName]").change(function(e) {
+        map['level'][$(this).val()] = map['level'][nowMapName];
+        delete map['level'][nowMapName];
+        nowMapName = $(this).val();
+
+        console.log(map);
+      });
+
+      // 사각형 만드는 콜백.
+      $("div.make_square_cutton").click(function(e) {
+        var xy = {};
+        //console.log(e);
+        xy.x = e.offsetX;
+        xy.y = map['level'][nowMapName]['size']['h'] * onePoint - e.offsetY;
+        var toXYCordinate = function(f) {
+          return Math.abs(Math.ceil(((f-20)/20)));
+        };
+        var toPx = function(num) {
+          return toXYCordinate(num) * onePoint;
+        };
+        xy.x = toPx(xy.x);
+        xy.y = toPx(xy.y);
+        console.log(xy);
+
+        var newBox = $('<div/>');
+        newBox.addClass('map_element')
+        .addClass('type_location')
+        .addClass('name_')
+        .css('width', onePoint + 'px')
+        .css('height', onePoint + 'px')
+        .css('left', xy.x + 'px')
+        .css('bottom', xy.y + 'px')
+        .appendTo('.map_elements')
+        .on('click', mapElementClicked);
+
+
+      });
+
+      // wall save 눌렀을 때
+      $("button[name=save_wall]").click(function(e) {
+
+        wallEditing.css('left', $('#wall_x').val() * onePoint)
+        .css('bottom', $('#wall_y').val() * onePoint)
+        .css('width', $('#wall_width').val() * onePoint)
+        .css('height', $('#wall_height').val() * onePoint)
+        .removeClass()
+        .addClass('map_element')
+        .addClass('name_' + $('#wall_name').val())
+        .addClass('type_' + $('#wall_type').val());
+
+
+        $(".popup").css('display', "none");
+
+
+
+      });
+      $("button[name=remove_wall]").click(function(e) {
+        wallEditing.remove();
+        $(".popup").css('display', "none");
+
+
+      });
+      $("button[name=close_wall]").click(function(e) {
+        $(".popup").css('display', "none");
+      });
+
+      //$()
+
+
+    });
+  })(jQuery);
+
+  // 맵 요소를 클릭했을때.
+  function mapElementClicked(e) {
+    // 일단 데이터를 보여준다.
+    $('.popup').css('display', 'block');
+    wallEditing = $(this);
+    var classString = $(this).attr('class');
+    var classes = classString.split(" ");
+    for(x in classes) {
+      var t = classes[x];
+      if(t.startsWith("type_")) {
+        $('#wall_type').val(t.replace("type_", ""));
+      }
+      if(t.startsWith("name_")) {
+        $('#wall_name').val(t.replace("name_", ""));
+      }
+    }
+
+    $('#wall_x').val(parseInt($(this).css('left')) / onePoint);
+    $('#wall_y').val(parseInt($(this).css('bottom')) / onePoint);
+    $('#wall_width').val(parseInt($(this).css('width')) / onePoint);
+    $('#wall_height').val(parseInt($(this).css('height')) / onePoint);
+
+    console.log(classes);
+  }
+  function updateCanvasSize() {
+    $('.map_container').css('width',
+     map['level'][nowMapName]['size']['w'] * onePoint);
+    $('.map_container').css('height',
+     map['level'][nowMapName]['size']['h'] * onePoint);
+    console.log(map);
+
+  }
+  function offsetToCorrectXY(obj) {
+    var x = obj.x;
+    var y = map['level'][nowMapName]['size']['y'] * onePoint - obj.y;
+
+  //  x -=
+  }
+  function initialCanvas() {
+    $('.drag_cutton').css('display', 'none');
+    $('.make_square_cutton').css('display', 'none');
+    $('.starting_point_cutton').css('display', 'none');
+  }
+
+  function handleFileSelect(evt) {
+    var files = evt.target.files; // FileList object
+    console.log(files);
+    // files is a FileList of File objects. List some properties.
+    for (var i = 0, f; f = files[i]; i++) {
+      if (f) {
+        console.log(f);
+        var r = new FileReader();
+        r.onload = (function(file, reader) {
+        return function(e) {
+          // Render thumbnail.
+          var span = document.createElement('span');
+          //$(".power").html(e.target.result);
+          map = $.parseJSON(e.target.result);
+          console.log(map);
+        };
+      })(f, r);
+
+        r.readAsText(f);
+      } else {
+        alert("Failed to load file");
+      }
+    }
+    //$('#list').html('<ul>' + output.join('') + '</ul>');
+  //  document.getElementById('list').innerHTML = '<ul>' + output.join('') + '</ul>';
+  }
+
+  $('#files').change(handleFileSelect);
+  //document.getElementById('files').addEventListener('change', handleFileSelect, false);
+
+  function move_clicked() {
+    mode.changeMode(mode.move);
+  }
+  function select_clicked() {
+    mode.changeMode(mode.select);
+  }
+  function make_square_clicked() {
+    mode.changeMode(mode.square);
+  }
+  function starting_point_clicked() {
+    mode.changeMode(mode.starting_point)
+  }
+
+  function save_clicked() {
+
+  }
+
+  function canvas_initialize(obj) {
+
+  }
+
+</script>
+  </body>
+</html>

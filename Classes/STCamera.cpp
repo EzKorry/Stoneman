@@ -90,16 +90,17 @@ void STCamera::setVibrationOffset(const cocos2d::Vec2& offset) {
 }
 
 void STCamera::vibrateCameraDirection(float power, float duration, float radian) {
-
-	if (isScheduled(_vibScheduleKey)) {
-		unschedule(_vibScheduleKey);
+	
+	auto scheduler = IngameScene::getInstance()->getLocalScheduler();
+	if (scheduler->isScheduled(_vibScheduleKey, this)) {
+		scheduler->unschedule(_vibScheduleKey, this);
 	}
 	float originalDuration = duration;
 	duration = 0;
 	float sita = radian;
 	bool isFlip = true;
 	float deltaElapsed = _vibrationInterval;
-	schedule([deltaElapsed, isFlip, sita, originalDuration, duration, power, this](float delta) mutable-> void {
+	scheduler->schedule([scheduler, deltaElapsed, isFlip, sita, originalDuration, duration, power, this](float delta) mutable-> void {
 		delta = IngameScene::_timeScale * delta;
 		deltaElapsed += delta;
 		duration += delta;
@@ -128,11 +129,11 @@ void STCamera::vibrateCameraDirection(float power, float duration, float radian)
 
 
 		if (duration > originalDuration) {
-			unschedule(_vibScheduleKey);
+			scheduler->unschedule(_vibScheduleKey, this);
 			this->_vibrationOffset.x = 0;
 			this->_vibrationOffset.y = 0;
 		}
-	}, _vibScheduleKey);
+	},this,0,false, _vibScheduleKey);
 }
 
 

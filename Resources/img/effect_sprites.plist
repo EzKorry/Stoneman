@@ -4,52 +4,24 @@
 	<dict>
 		<key>frames</key>
 		<dict>
-			<key>button_off.png</key>
+			<key>circle.png</key>
 			<dict>
 				<key>frame</key>
-				<string>{{0,82},{40,40}}</string>
+				<string>{{0,41},{38,38}}</string>
 				<key>offset</key>
 				<string>{0,0}</string>
 				<key>rotated</key>
 				<false/>
 				<key>sourceColorRect</key>
-				<string>{{0,0},{40,40}}</string>
+				<string>{{1,1},{38,38}}</string>
 				<key>sourceSize</key>
 				<string>{40,40}</string>
 			</dict>
 
-			<key>button_on.png</key>
-			<dict>
-				<key>frame</key>
-				<string>{{0,41},{40,40}}</string>
-				<key>offset</key>
-				<string>{0,0}</string>
-				<key>rotated</key>
-				<false/>
-				<key>sourceColorRect</key>
-				<string>{{0,0},{40,40}}</string>
-				<key>sourceSize</key>
-				<string>{40,40}</string>
-			</dict>
-
-			<key>cracked.png</key>
+			<key>square.png</key>
 			<dict>
 				<key>frame</key>
 				<string>{{0,0},{40,40}}</string>
-				<key>offset</key>
-				<string>{0,0}</string>
-				<key>rotated</key>
-				<false/>
-				<key>sourceColorRect</key>
-				<string>{{0,0},{40,40}}</string>
-				<key>sourceSize</key>
-				<string>{40,40}</string>
-			</dict>
-
-			<key>tile2.png</key>
-			<dict>
-				<key>frame</key>
-				<string>{{0,82},{40,40}}</string>
 				<key>offset</key>
 				<string>{0,0}</string>
 				<key>rotated</key>
@@ -69,7 +41,7 @@
 			<key>size</key>
 			<string>{64,128}</string>
 			<key>textureFileName</key>
-			<string>sprites2.png</string>
+			<string>effect_sprites.png</string>
 			</dict>
 		</dict>
 </plist>

@@ -20,6 +20,7 @@
 #include "STBox2dNode.h"
 #include "apAnimationManager.h"
 #include "function_traits.h"
+#include "FollowNode.h"
 #include <sstream>
 #include <future>
 #include <fstream>
@@ -52,6 +53,7 @@ bool IngameScene::init() {
 
 	scheduleUpdate();
 	apHookActionManager::getInstance()->runHook("game_start");
+	
 	
 	
 	return true;
@@ -391,35 +393,36 @@ void IngameScene::debugVariable() {
 	}, "dasnAngle");
 	addTextField(&_dashDuration, "dashDuration");
 	addTextField([this](EditBox * editbox)->void {
-		_effectConf.count = std::atoi(editbox->getText());
+		_effectConfs[ROCK_LITTLE_CRACK_FLOOR].count = std::atoi(editbox->getText());
 	}, "effectCount");
-	addTextField(&(_effectConf.minPower), "pMinPower");
-	addTextField(&(_effectConf.maxPower), "pMaxPower");
-	addTextField(&(_effectConf.minSize), "minSize");
-	addTextField(&(_effectConf.maxSize), "pmaxSize");
-	addTextField(&(_effectConf.minGravityScale), "pminGravityScale");
-	addTextField(&(_effectConf.maxGravityScale), "pmaxGravityScale");
-	addTextField(&(_effectConf.minDuration), "pminDuration");
-	addTextField(&(_effectConf.maxDuration), "pmaxDuration");
-	addTextField(&(_effectConf.friction), "pfriction");
-	addTextField(&(_effectConf.restitution), "prestitution");
-	addTextField(&(_effectConf.diffuseX), "pdiffuseX");
-	addTextField(&(_effectConf.diffuseY), "pdiffuseY");
+	addTextField(&(_effectConfs[ROCK_LITTLE_CRACK_FLOOR].minPower), "pMinPower");
+	addTextField(&(_effectConfs[ROCK_LITTLE_CRACK_FLOOR].maxPower), "pMaxPower");
+	addTextField(&(_effectConfs[ROCK_LITTLE_CRACK_FLOOR].minSize), "minSize");
+	addTextField(&(_effectConfs[ROCK_LITTLE_CRACK_FLOOR].maxSize), "pmaxSize");
+	addTextField(&(_effectConfs[ROCK_LITTLE_CRACK_FLOOR].minGravityScale), "pminGravityScale");
+	addTextField(&(_effectConfs[ROCK_LITTLE_CRACK_FLOOR].maxGravityScale), "pmaxGravityScale");
+	addTextField(&(_effectConfs[ROCK_LITTLE_CRACK_FLOOR].minDuration), "pminDuration");
+	addTextField(&(_effectConfs[ROCK_LITTLE_CRACK_FLOOR].maxDuration), "pmaxDuration");
+	addTextField(&(_effectConfs[ROCK_LITTLE_CRACK_FLOOR].friction), "pfriction");
+	addTextField(&(_effectConfs[ROCK_LITTLE_CRACK_FLOOR].restitution), "prestitution");
+	addTextField(&(_effectConfs[ROCK_LITTLE_CRACK_FLOOR].diffuseX), "pdiffuseX");
+	addTextField(&(_effectConfs[ROCK_LITTLE_CRACK_FLOOR].diffuseY), "pdiffuseY");
+	
 	addTextField([this](EditBox * editbox)->void {
-		_effectConf.color.r = std::atoi(editbox->getText());
+		_effectConfs[ROCK_LITTLE_CRACK_FLOOR].color.r = std::atoi(editbox->getText());
 	}, "color.r");
 	addTextField([this](EditBox * editbox)->void {
-		_effectConf.color.g = std::atoi(editbox->getText());
+		_effectConfs[ROCK_LITTLE_CRACK_FLOOR].color.g = std::atoi(editbox->getText());
 	}, "color.g");
 	addTextField([this](EditBox * editbox)->void {
-		_effectConf.color.b = std::atoi(editbox->getText());
+		_effectConfs[ROCK_LITTLE_CRACK_FLOOR].color.b = std::atoi(editbox->getText());
 	}, "color.b");
 	addTextField([this](EditBox * editbox)->void {
-		_effectConf.colorBrightnessRange = std::atoi(editbox->getText());
+		_effectConfs[ROCK_LITTLE_CRACK_FLOOR].colorBrightnessRange = std::atoi(editbox->getText());
 	}, "colorBrightnessRange");
 
-	addTextField(&(_effectConf.minAlpha), "minAlpha");
-	addTextField(&(_effectConf.maxAlpha), "maxAlpha");
+	addTextField(&(_effectConfs[ROCK_LITTLE_CRACK_FLOOR].minAlpha), "minAlpha");
+	addTextField(&(_effectConfs[ROCK_LITTLE_CRACK_FLOOR].maxAlpha), "maxAlpha");
 
 	addTextField([this](EditBox * editbox)->void {
 		_positionIterations = std::atoi(editbox->getText());
@@ -427,6 +430,19 @@ void IngameScene::debugVariable() {
 	addTextField([this](EditBox * editbox)->void {
 		_velocityIterations = std::atoi(editbox->getText());
 	}, "_velocityIterations");
+	addTextField(&(_effectConfs[DUST].maxPower), "maxPowerDust");
+	addTextField(&(_effectConfs[DUST].minSize), "Dustminsize");
+	addTextField(&(_effectConfs[DUST].maxSize), "DustmaxSize");
+	addTextField(&(_effectConfs[DUST].minAlpha), "DustMinAlpha");
+	addTextField(&(_effectConfs[DUST].maxAlpha), "DustMaxAlpha");
+	addTextField([this](EditBox * editbox)->void {
+		_effectConfs[DUST].count = std::atoi(editbox->getText());
+	}, "DustCount");
+	addTextField(&(_slowMotionDuration), "slow_motion_duration");
+	addTextField([this](EditBox * editbox)->void {
+		_slowMotionSpOpacity = std::atoi(editbox->getText());
+	}, "_slowMotionSpOpacity");
+	
 }
 void IngameScene::animationTest()
 {
@@ -732,9 +748,42 @@ void IngameScene::gameInterface()
 			_charBody->GetWorldCenter(), true);
 	};
 	am->addAction("character_dash_wall_right", "bounce_right", _wallBuilder, [this, bounce](float power)->void {
+		
+		auto actionManager = apHookActionManager::getInstance();
+		actionManager->runHook("slow_motion", 0.0f, _slowMotionDuration);
+
+		_camera->vibrateCameraDirection(
+			power * _cameraVRatio / 4,
+			power * _cameraVDuration,
+			0.f * M_PI);
+
+		auto point = Vec2(
+			_characterNode->getPositionX() + _boxWidth / 2,
+			_characterNode->getPositionY());
+
+		_effectGen->generateEffect(_effectConfs[DUST],point);
+		_effectGen->generateEffect(_effectConfs[ROCK_LITTLE_CRACK], point);
+
 		bounce(power, true);
+
 	});
 	am->addAction("character_dash_wall_left", "bounce_left", _wallBuilder, [this, bounce](float power)->void {
+		
+		auto actionManager = apHookActionManager::getInstance();
+		actionManager->runHook("slow_motion", 0.0f, _slowMotionDuration);
+		
+		_camera->vibrateCameraDirection(
+			power * _cameraVRatio / 4,
+			power * _cameraVDuration,
+			0.f * M_PI);
+		
+		auto point = Vec2(
+			_characterNode->getPositionX() - _boxWidth / 2,
+			_characterNode->getPositionY());
+
+		_effectGen->generateEffect(_effectConfs[DUST],point);
+		_effectGen->generateEffect(_effectConfs[ROCK_LITTLE_CRACK], point);
+		
 		bounce(power, false);
 	});
 
@@ -745,12 +794,54 @@ void IngameScene::gameInterface()
 			0.5f * M_PI);
 
 		cocos2d::log("hit the ground power is %f", power);
-		boost::coroutines::symmetric_coroutine<void>::call_type gogo(
+		/*boost::coroutines::symmetric_coroutine<void>::call_type gogo(
 			[this](boost::coroutines::symmetric_coroutine<void>::yield_type& yield) {
-			_effectGen->generateEffect(_effectConf, _characterNode->getPosition().x, _characterNode->getPosition().y - _boxHeight / 2);
+			_effectGen->generateEffect(_effectConfs[ROCK_LITTLE_CRACK], _characterNode->getPosition().x, _characterNode->getPosition().y - _boxHeight / 2);
 		});
 		apAsyncTaskManager::getInstance()->addTask(std::move(gogo));
+
+		
+		*/
+
+		auto point = Vec2(_characterNode->getPosition().x, _characterNode->getPosition().y - _boxHeight / 2);
+		
+		_effectGen->generateEffect(_effectConfs[DUST_FLOOR], point);
+		
+		int modifiedCount = util.bySameRatio(0.05f, power, 0.20f, 3.f, 18.f);
+		_effectConfs[ROCK_LITTLE_CRACK_FLOOR].count = modifiedCount; 
+		_effectGen->generateEffect(_effectConfs[ROCK_LITTLE_CRACK_FLOOR], _characterNode->getPosition().x, _characterNode->getPosition().y - _boxHeight / 2);
+		
 	
+	});
+
+	am->addAction("slow_motion", "m", _wallBuilder, [this](float start, float duration) {
+		float elapsed = 0.f;
+		_characterNode->setZOrder(MFZORDER_EMPH_CHARNODE);
+		auto blackSp = _masterField->getChildByName("black_square")->getChildByName("sp");
+		if(blackSp) blackSp->setOpacity(_slowMotionSpOpacity);
+		_scheduler->unschedule("slow_motion", _wallBuilder);
+		_scheduler->schedule([blackSp, elapsed, start, duration, this](float delta) mutable {
+			elapsed += delta;
+			if (elapsed > duration) {
+				_scheduler->unschedule("slow_motion", _wallBuilder);
+				_localScheduler->setTimeScale(1.f);
+				_characterNode->setZOrder(MFZORDER_CHARNODE);
+				if (blackSp) {
+					blackSp->setOpacity(0);
+				}
+
+			}
+			else {
+				//auto nowTimeScale = util.bySameRatio(0.f, elapsed, duration, start, 1.f);
+				auto nowTimeScale = util.easeInExpo(elapsed, start, 1.f, duration);
+				int nowOpacity = util.easeInExpo(elapsed, 0, _slowMotionSpOpacity, duration);
+				nowOpacity = _slowMotionSpOpacity - nowOpacity;
+				_localScheduler->setTimeScale(nowTimeScale);
+				if (blackSp) blackSp->setOpacity(nowOpacity);
+			}
+			
+
+		}, _wallBuilder, 0, false, "slow_motion");
 	});
 
 }
@@ -781,7 +872,7 @@ void IngameScene::initializePhysics(const std::string& level)
 	_camera->setBorderSize(
 		_maps["level"][_level.c_str()]["size"]["w"].GetInt(),
 		_maps["level"][_level.c_str()]["size"]["h"].GetInt());
-	_masterField->addChild(_wallBuilder, 10, "wallBuilder");
+	_masterField->addChild(_wallBuilder, MFZORDER_WALLBUILDER, "wallBuilder");
 
 
 	//_wallBuilder->makeWall(-20, -20, 40, 40);
@@ -792,11 +883,11 @@ void IngameScene::initializePhysics(const std::string& level)
 		visibleSize.height); //RIGHT*/
 
 
-	//add backgrounds
-	
+		//add backgrounds
+
 
 	using scv = boost::coroutines::symmetric_coroutine<void>;
-	
+
 	apAsyncTaskManager::getInstance()->addTask(
 		scv::call_type([this](scv::yield_type& yield) {
 		_backgroundFollowRatio.clear();
@@ -805,7 +896,7 @@ void IngameScene::initializePhysics(const std::string& level)
 		if (_level == "1") {
 			auto makeBackground = [this, &yield](
 				float minHeight, float maxHeight, float minLength, float maxLength, Color4B color)
-			-> cocos2d::Node* {
+				->cocos2d::Node* {
 				auto drawNode = DrawNode::create();
 				auto totalLength = 0.f;
 				auto lengthLimit = Director::getInstance()->getVisibleSize().width;
@@ -815,7 +906,7 @@ void IngameScene::initializePhysics(const std::string& level)
 				std::uniform_real_distribution<float>
 					d_height(minHeight, maxHeight),
 					d_length(minLength, maxLength);
-				
+
 
 				while (totalLength <= lengthLimit) {
 					auto l = d_length(gen);
@@ -829,7 +920,7 @@ void IngameScene::initializePhysics(const std::string& level)
 					vs.emplace_back(make_tuple(l, h));
 					//_debugBox->get() << "length : " << l << " height : " << h << _debugBox->push;
 				}
-				
+
 				auto drawnode = DrawNode::create();
 				totalLength = 0;
 				auto n = [this, &vs, &drawnode, &totalLength, &color, &yield]() {
@@ -864,9 +955,9 @@ void IngameScene::initializePhysics(const std::string& level)
 			_backgroundFollowRatio.emplace(bg2, 0.1f);
 			//_backgroundFollowRatio.emplace(bg1, 0.f);
 			_backgroundFollowRatio.emplace(bgSprite, 0.f);
-			
-			
-			
+
+
+
 		}
 
 
@@ -880,14 +971,14 @@ void IngameScene::initializePhysics(const std::string& level)
 	_mcFrameRanges["walk"] = FrameRange(0, 19);
 	_mcFrameEvents["walk"][5] = "power_frame_event";
 	_mcFramePath = "charTest1-1.plist";
-	
+
 	auto spritecache = SpriteFrameCache::getInstance();
 	//spritecache->addSpriteFramesWithFile(_mcFramePath);
 
 	//auto animationWalk = util.getAnimation("chartest%04d", _mcFrameRanges["walk"]);
 	//animationWalk->getFrames().front()->
 	//auto& animationWalkFrames = animationWalk->getFrames();
-	
+
 
 
 	//make animation
@@ -900,7 +991,7 @@ void IngameScene::initializePhysics(const std::string& level)
 		for (auto& item2 : item.second) {
 			auto& frame = item2.first;
 			auto& hookName = item2.second;
-			
+
 			aniManager->setFrameEvent(animationName, frame, hookName);
 
 		}
@@ -912,7 +1003,7 @@ void IngameScene::initializePhysics(const std::string& level)
 
 
 
-	
+
 
 	// set hook event at each frame's userInfo.
 	/*
@@ -935,8 +1026,8 @@ void IngameScene::initializePhysics(const std::string& level)
 	});
 	_eventDispatcher->addEventListenerWithFixedPriority(listenerAnimationFrameDisplayed, 1);
 	*/
-	
-	
+
+
 	_sp = aniManager->createSprite("walk");
 	_sp->setScale(0.375f);
 
@@ -957,7 +1048,7 @@ void IngameScene::initializePhysics(const std::string& level)
 	charFixtureDef.filter.categoryBits = CHARACTER;
 	charFixtureDef.filter.maskBits = CHARACTER || BOSS || WALL;
 
-	
+
 	auto& startCoord = _maps["level"][_level.c_str()]["start"];
 	b2BodyDef charBodyDef;
 	//charBodyDef.position.Set((startCoord["x"].GetInt() * OneBlockPx) / SCALE_RATIO, (startCoord["y"].GetInt() * OneBlockPx) / SCALE_RATIO);
@@ -970,12 +1061,12 @@ void IngameScene::initializePhysics(const std::string& level)
 
 	_characterNode = STBox2dNode::createWithBox2dBody(_charBody);
 	_characterNode->addChild(_sp);
-	_masterField->addChild(_characterNode);
+	_masterField->addChild(_characterNode, MFZORDER_CHARNODE, "character_node");
 	_characterNode->setBodyPositionBlock(Vec2(startCoord["x"].GetInt(), startCoord["y"].GetInt()));
 	_charBody->SetUserData(_characterNode);
 
 	// origin Air resistance setting.
-	
+
 	_originAirResistance = _airResistance;
 
 
@@ -1005,7 +1096,7 @@ void IngameScene::initializePhysics(const std::string& level)
 			}
 			return false;
 		};
-		
+
 		switch (direction) {
 		case C_LEFT:
 			return
@@ -1032,7 +1123,7 @@ void IngameScene::initializePhysics(const std::string& level)
 		return false;
 	};
 
-	
+
 
 
 	_cl_p->setBeginContact(_charBody, [this, isNormalDirection](b2Contact* contact, b2Fixture* other) {
@@ -1047,9 +1138,13 @@ void IngameScene::initializePhysics(const std::string& level)
 				_goFloorEffect = true;
 			}
 			_floorFixtures.emplace(other);
-			
+
+			auto actionManager = apHookActionManager::getInstance();
+			auto wallBody = other->GetBody();
+			actionManager->runHook("character_hit_button", wallBody);
+
 		}
-	
+
 
 		/*// if hit Ground!
 		if (impulse->normalImpulses[0] >= 0.05f &&
@@ -1087,20 +1182,21 @@ void IngameScene::initializePhysics(const std::string& level)
 			characterHitRightWall(impulse->normalImpulses[0]);
 			//_characterHitRightWallYes = true;
 		}*/
-
+		auto actionManager = apHookActionManager::getInstance();
+		actionManager->runHook("begin_contact", contact, other);
 	});
 
 
 	_cl_p->setPostSolve(_charBody,
 		[this, isNormalDirection](b2Contact* contact, const b2ContactImpulse* impulse, b2Fixture* other) {
-		
+
 		b2WorldManifold worldManifold;
 		contact->GetWorldManifold(&worldManifold);
 		auto actionManager = apHookActionManager::getInstance();
 
 		_hitPower = impulse->normalImpulses[0];
 		if (_hitPower >= 0.05f) {
-			
+
 		}
 		/*cocos2d::log("nX:%.2f, nY:%.2f, inp0:%.2f, inp1:%.2f, itp0:%.2f, itp1:%.2f",
 			worldManifold.normal.x,
@@ -1109,13 +1205,13 @@ void IngameScene::initializePhysics(const std::string& level)
 			impulse->normalImpulses[1], // useless. -107374176.00
 			impulse->tangentImpulses[0], // useless. -0.00
 			impulse->tangentImpulses[1]); // useless. -107374176.00*/
-		// if hit Ground!
+			// if hit Ground!
 		if (_goFloorEffect == true
 			/*impulse->normalImpulses[0] >= 0.05f*/ &&
 			isNormalDirection(worldManifold, C_UP)) {
 
-			
-				
+
+
 			// power max : 0.2f
 			float power = impulse->normalImpulses[0];
 			if (power >= 0.2f) {
@@ -1143,18 +1239,23 @@ void IngameScene::initializePhysics(const std::string& level)
 				else {
 					actionManager->runHook("character_dash_wall_right", impulse->normalImpulses[0]);
 				}
-				
+
 				actionManager->runHook("dash_end");
 				actionManager->addAction("after_worldstep_once", "break_wall_left", _wallBuilder,
 					[this, other]() {
 					_wallBuilder->tryBreakWall(other);
 				});
 
+				// set local timescale 0
+				_localScheduler->setTimeScale(0.f);
+
 			}
 
 			//characterHitLeftWall(impulse->normalImpulses[0]);
 			//_characterHitLeftWallYes = true;
 		}
+
+		actionManager->runHook("post_solve", contact, impulse, other);
 
 	});
 
@@ -1165,9 +1266,12 @@ void IngameScene::initializePhysics(const std::string& level)
 			worldManifold.normal.y);
 
 		//remove fixture from floor fixtures set.
-		if (_floorFixtures.find(other) != _floorFixtures.end()){
+		if (_floorFixtures.find(other) != _floorFixtures.end()) {
 			_floorFixtures.erase(other);
 		}
+		auto actionManager = apHookActionManager::getInstance();
+		actionManager->runHook("end_contact", contact, other);
+		
 	});
 
 
@@ -1178,7 +1282,7 @@ void IngameScene::initializePhysics(const std::string& level)
 		acMan->removeHook("after_worldstep_once");
 		acMan->runHook("after_worldstep");
 
-		
+
 		/*if (_characterHitGroundYes) {
 			_characterHitGroundYes = false;
 			characterHitGround(_hitPower);
@@ -1192,7 +1296,7 @@ void IngameScene::initializePhysics(const std::string& level)
 			_characterHitRightWallYes = false;
 			characterHitRightWall(_hitPower);
 		}*/
-	
+
 	});
 
 
@@ -1274,13 +1378,25 @@ void IngameScene::initializePhysics(const std::string& level)
 
 
 	//drawnode polygon test 
-	auto dn = DrawNode::create();
+	/*auto dn = DrawNode::create();
 	_masterField->addChild(dn);
 	dn->setPosition(Vec2(300, 300));
 	Vec2 verts[5] = { {0,100},{100,100}, {50,50}, {100,0},{0,50} };
 	dn->drawPolygon(verts, 5, Color4F(1.f, 1.f, 1.f, 1.f), 0, Color4F(0, 0, 0, 0));
+	*/
 
-
+	//slow motion emphasize black square
+	auto blackSquare = FollowNode::createWithYardstick(_masterField);
+	_masterField->addChild(blackSquare, MFZORDER_EMPH_BLACK, "black_square");
+	auto blackSquareSp = Sprite::create("black.png");
+	blackSquareSp->setAnchorPoint(Vec2::ZERO);
+	auto spSize = blackSquareSp->getContentSize();
+	auto size = Director::getInstance()->getVisibleSize();
+	blackSquareSp->setScaleX(size.width / spSize.width);
+	blackSquareSp->setScaleY(size.height / spSize.height);
+	blackSquareSp->setCascadeOpacityEnabled(true);
+	blackSquareSp->setOpacity(0);
+	blackSquare->addChild(blackSquareSp, 0, "sp");
 	
 }
 void IngameScene::initializeEffectManager()
@@ -1289,29 +1405,62 @@ void IngameScene::initializeEffectManager()
 	// effect manager
 	//---------------------
 	_effectGen = STEffectGenerator::create();
-	_masterField->addChild(_effectGen);
+	_masterField->addChild(_effectGen, MFZORDER_EFFGEN, "effect_generator");
 
 
 	/// effect setting!!///
-	_effectConf.count = 10;
-	_effectConf.minPower = 0.5f; // 0.5
-	_effectConf.maxPower = 2.5f; // 2.5
-	_effectConf.minSize = 1.f;
-	_effectConf.maxSize = 7.f;
-	_effectConf.minGravityScale = 0.8f; // 0.8
-	_effectConf.maxGravityScale = 0.8f; // 0.8
-	_effectConf.minDuration = 3.f;
-	_effectConf.maxDuration = 5.f;
-	_effectConf.restitution = 0.4f;
-	_effectConf.friction = 0.2f; // 0.2
-	_effectConf.diffuseX = 40.f;
-	_effectConf.diffuseY = 0.f;
-	_effectConf.color = cocos2d::Color3B(107, 88, 71);
-	_effectConf.minAlpha = 200.f;
-	_effectConf.maxAlpha = 200.f;
-	_effectConf.colorBrightnessRange = 30;
-	_effectConf.fixedRotation = false;
-	_effectConf.type = STEffectType::Boom;
+	_effectConfs[ROCK_LITTLE_CRACK_FLOOR].count = 10;
+	_effectConfs[ROCK_LITTLE_CRACK_FLOOR].minPower = 0.5f; // 0.5
+	_effectConfs[ROCK_LITTLE_CRACK_FLOOR].maxPower = 2.5f; // 2.5
+	_effectConfs[ROCK_LITTLE_CRACK_FLOOR].minSize = 1.f;
+	_effectConfs[ROCK_LITTLE_CRACK_FLOOR].maxSize = 7.f;
+	_effectConfs[ROCK_LITTLE_CRACK_FLOOR].hasPhysics = true;
+	_effectConfs[ROCK_LITTLE_CRACK_FLOOR].maskBits = WALL;
+	_effectConfs[ROCK_LITTLE_CRACK_FLOOR].minGravityScale = 0.8f; // 0.8
+	_effectConfs[ROCK_LITTLE_CRACK_FLOOR].maxGravityScale = 0.8f; // 0.8
+	_effectConfs[ROCK_LITTLE_CRACK_FLOOR].minDuration = 3.f;
+	_effectConfs[ROCK_LITTLE_CRACK_FLOOR].maxDuration = 5.f;
+	_effectConfs[ROCK_LITTLE_CRACK_FLOOR].restitution = 0.4f;
+	_effectConfs[ROCK_LITTLE_CRACK_FLOOR].friction = 0.2f; // 0.2
+	_effectConfs[ROCK_LITTLE_CRACK_FLOOR].diffuseX = 40.f;
+	_effectConfs[ROCK_LITTLE_CRACK_FLOOR].diffuseY = 0.f;
+	//_effectConfs[ROCK_LITTLE_CRACK].color = cocos2d::Color3B(107, 88, 71);
+	_effectConfs[ROCK_LITTLE_CRACK_FLOOR].color = cocos2d::Color3B(255, 255, 255);
+	_effectConfs[ROCK_LITTLE_CRACK_FLOOR].minAlpha = 200.f;
+	_effectConfs[ROCK_LITTLE_CRACK_FLOOR].maxAlpha = 200.f;
+	_effectConfs[ROCK_LITTLE_CRACK_FLOOR].colorBrightnessRange = 0;
+	_effectConfs[ROCK_LITTLE_CRACK_FLOOR].fixedRotation = false;
+	_effectConfs[ROCK_LITTLE_CRACK_FLOOR].type = STEffectType::Boom;
+
+	_effectConfs[ROCK_LITTLE_CRACK] = _effectConfs[ROCK_LITTLE_CRACK_FLOOR];
+	_effectConfs[ROCK_LITTLE_CRACK].diffuseX = 5.f;
+	_effectConfs[ROCK_LITTLE_CRACK].diffuseY = 40.f;
+	_effectConfs[ROCK_LITTLE_CRACK].minSize *= 2;
+	_effectConfs[ROCK_LITTLE_CRACK].maxSize *= 2;
+	_effectConfs[ROCK_LITTLE_CRACK].minPower *= 2;
+	_effectConfs[ROCK_LITTLE_CRACK].maxPower *= 2;
+
+	_effectConfs[DUST] = _effectConfs[ROCK_LITTLE_CRACK_FLOOR];
+	_effectConfs[DUST].tex = STEffectTexture::Circle;
+	_effectConfs[DUST].minAlpha = 0.f;
+	_effectConfs[DUST].maxAlpha = 100.f;
+	_effectConfs[DUST].minGravityScale = 0.f;
+	_effectConfs[DUST].maxGravityScale = 0.f;
+	_effectConfs[DUST].minSize = 10.f;
+	_effectConfs[DUST].maxSize = 40.f;
+	_effectConfs[DUST].maskBits = 0;
+	_effectConfs[DUST].color = cocos2d::Color3B(255, 255, 255);
+	_effectConfs[DUST].minPower = 0.f;
+	_effectConfs[DUST].maxPower = 0.1f;
+	_effectConfs[DUST].fixedRotation = true;
+	_effectConfs[DUST].diffuseX = 10.f;
+	_effectConfs[DUST].diffuseY = 60.f;
+
+	_effectConfs[DUST_FLOOR] = _effectConfs[DUST];
+	_effectConfs[DUST_FLOOR].minSize = 5.f;
+	_effectConfs[DUST_FLOOR].maxSize = 20.f;
+	_effectConfs[DUST_FLOOR].diffuseX = 40.f;
+	_effectConfs[DUST_FLOOR].diffuseY = 5.f;
 }
 
 void IngameScene::jumpTouchEnd() {
@@ -1441,7 +1590,7 @@ void IngameScene::characterHitGround(float power) {
 	cocos2d::log("hit the ground power is %f", power);
 	boost::coroutines::symmetric_coroutine<void>::call_type gogo(
 		[this](boost::coroutines::symmetric_coroutine<void>::yield_type& yield) {
-		_effectGen->generateEffect(_effectConf, _characterNode->getPosition().x, _characterNode->getPosition().y - _boxHeight / 2);
+		_effectGen->generateEffect(_effectConfs[ROCK_LITTLE_CRACK], _characterNode->getPosition().x, _characterNode->getPosition().y - _boxHeight / 2);
 	});
 	apAsyncTaskManager::getInstance()->addTask(std::move(gogo));
 	
@@ -1566,7 +1715,8 @@ IngameScene::~IngameScene() {
 
 float IngameScene::Util::bySameRatio(float aStart, float a, float aEnd, float bStart, float bEnd)
 {
-	if (aStart > a || aEnd < a) return 0.f;
+	if (aStart > a) return bStart;
+	if (aEnd < a) return bEnd;
 	if (aStart > aEnd || bStart > bEnd) return 0.f;
 
 	auto aRatio = (a - aStart) / (aEnd - aStart);

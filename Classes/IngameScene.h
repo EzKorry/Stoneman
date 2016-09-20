@@ -34,11 +34,27 @@ enum EntityCategory {
 	ENEMY_AIRCRAFT = 0x0010,
 };
 
+enum EffectType {
+	ROCK_LITTLE_CRACK,
+	ROCK_LITTLE_CRACK_FLOOR,
+	DUST,
+	DUST_FLOOR
+};
+
 enum ScheduleUpdateFuncPriority {
 	P_WORLDSTEP = 1,
 	P_AFTER_WORLDSTEP = 2,
 	P_CAMERA = 5,
-	P_REPLACEMAPSPRITES = 6
+	P_REPLACEMAPSPRITES = 6,
+	P_FOLLOWNODE = 7
+};
+
+enum MasterFieldZOrder {
+	MFZORDER_CHARNODE = 9,
+	MFZORDER_WALLBUILDER = 10,
+	MFZORDER_EFFGEN = 11,
+	MFZORDER_EMPH_BLACK = 12,
+	MFZORDER_EMPH_CHARNODE = 13
 };
 
 class STCamera;
@@ -72,6 +88,14 @@ private:
 		// 300x500 image, side=200, isWidth=true then 200x333 image created.
 		void resizeSprite(cocos2d::Sprite* sprite, float side, bool sideIsWidth);
 		
+		// t : current time
+		// b : start value
+		// c : change in value
+		// d : duration.
+		// http://www.gizma.com/easing/
+		inline float easeInExpo(float t, float b, float c, float d) {
+			return c * std::pow(2, 10 * (t / d - 1)) + b;
+		};
 		
 		Color4F switchColor(const Color4B& color) {
 			return Color4F(color);
@@ -222,6 +246,7 @@ private:
 	float _airResistance{ 0.02f }, _originAirResistance{ 0.0f }, _maxAirResistance{ 1.5f }, _nowMaxAirResistance{ 0.0f };
 	float _movePower{ 10.0f };
 
+	
 	// box Width and height are going to be initialized by appInit();
 	float _boxWidth{ 0.0f }, _boxHeight{ 0.0f }, _boxDensity{ 0.01f };
 	float _cameraMoveSpeed{ 0.3f };
@@ -234,6 +259,9 @@ private:
 	float _cameraVDuration{ 5.0f };
 	const float _dashWallCondition{ 0.2f };
 
+	//how long slow motion
+	float _slowMotionDuration{ 0.3f };
+	int _slowMotionSpOpacity{ 70 };
 	// for left wall hit
 	float _dashWallBounceRadian{ 0.05f * (float)M_PI };
 	float _dashWallBouncePower{ 6.0f };
@@ -249,8 +277,8 @@ private:
 	//debugBox
 	DebugBox* _debugBox;
 
-	STEffectConfigure _effectConf;
 	STEffectGenerator* _effectGen;
+	std::map<EffectType, STEffectConfigure> _effectConfs;
 	STWallBuilder* _wallBuilder;
 	
 	// localScheduler for slow motion.

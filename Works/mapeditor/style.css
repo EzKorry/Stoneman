@@ -1,0 +1,102 @@
+button {
+  background-color:#ddd;
+  box-shadow:0;
+  border:0;
+  padding:20px;
+
+
+
+}
+button:focus {
+  outline:0;
+}
+
+button:hover{
+  cursor:pointer;
+}
+
+.canvas {
+  background-color:#777;
+  width:700px;
+  height:700px;
+  margin:20px auto;
+  position:relative;
+  border:1px solid #aaa;
+  overflow:hidden;
+}
+
+.map_container {
+  position:absolute;
+  background-color:#eee;
+}
+.point {
+  width:20px;
+  height:20px;
+  position:absolute;
+  background-color:red;
+
+}
+
+.point:hover {
+  cursor:pointer;
+}
+
+.popup {
+  position:absolute;
+  width: 238px;
+  height: 235px;
+  top:0;
+  background-color:#fff;
+  border:1px solid #0f0;
+  overflow:hidden;
+  display:none;
+
+}
+
+.drag_cutton {
+  z-index:100;
+  position:absolute;
+  left:0;
+  right:0;
+  top:0;
+  bottom:0;
+  display:none;
+}
+.drag_cutton:hover {
+  cursor:all-scroll;
+}
+.make_square_cutton, .starting_point_cutton {
+  position:absolute;
+  z-index:100;
+  left:0;
+  right:0;
+  top:0;
+  bottom:0;
+  display:none;
+}
+.make_square_cutton:hover {
+  cursor:pointer;
+}
+.grid {
+  position:absolute;
+}
+.map_element {
+    position: absolute;
+    background-color: #aaa;
+    border: 1px solid #ddd;
+}
+.map_element:hover {
+  cursor:pointer;
+}
+
+.map_element.type_solid_wall {
+  background-color: #fff;
+  border: 1px solid #ff4b8d;
+}
+
+
+
+.map_element.type_location {
+  background-color: #8e91ff;
+  border: 1px solid #5a5fff;
+}

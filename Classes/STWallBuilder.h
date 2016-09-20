@@ -5,8 +5,10 @@
 #include <json/document.h>
 #include <string>
 #include <Box2D/Box2D.h>
+#include <STWall.h>
 #include <array>
 #include <tuple>
+
 using namespace rapidjson;
 using namespace cocos2d;
 
@@ -19,20 +21,13 @@ enum SurfaceType {
 	ST_bottom_left = 0x0004,
 	ST_bottom_right = 0x0008,
 };
-enum class WallType {
-	Solid,
-	Breakable
-};
 
-enum UpdateWallSprite {
-	UW_X,
-	UW_Y
-};
 struct stdnElement {
 	int level = 0;
 	unsigned int type = ST_void;
 	cocos2d::Sprite* sprite = nullptr;
 };
+
 class STWallBuilder :public Node
 {
 public:
@@ -74,22 +69,36 @@ public:
 	const int maxBlockDarknessLevel = 6;
 	virtual ~STWallBuilder();
 
+
+	// wall getter.
+	
+
 private:
 	//std::unordered_map<int, std::unordered_map<int, stdnElement>> _map;
-	std::map<std::tuple<int, int>, stdnElement> _map;
+	// std::map<std::tuple<int, int>, stdnElement> _map;
 	//std::map<b2Body*, std::vector<Sprite*>> _getSpritesByBody;
 	//std::map<b2Body*, std::vector<Sprite*>> _getCrackByBody;
 	
-	std::map<b2Body*, WallType> _wallType;
+	// wall type, name, fixtures, vecRect, 
+	std::vector<STWall*> _walls;
+	//std::map<b2Body*, WallType> _wallType;
+	//std::map<std::string, b2Body*> _wallName;
+	//std::vector<std::tuple<Rect, b2Body*>> _vecRect;
 	std::map<WallType, std::string> _wallSpriteFrameName;
-	WallType getWallTypeWithName(const std::string& name);
-	
-	//std::map<b2Fixture*, b2Body*> _fixtureToBody;
-	cocos2d::SpriteBatchNode* _batchNode{ nullptr };
+	WallType getWallTypeWithName(const std::string & name);
+	WallButtonActionType getWallButtonActionType(const std::string & name);
+	STWall* getWallByBody(b2Body* body);
+	STWall* getWallByName(const std::string& name);
+
+	void removeWall(STWall* wall);
+
 	std::map<std::string, cocos2d::SpriteBatchNode*> _batchNodeMap;
 	cocos2d::SpriteBatchNode* _batch{ nullptr };
 	cocos2d::SpriteBatchNode* _black{ nullptr };
 	cocos2d::RenderTexture* _target{ nullptr };
+	
+	// using when fixture contacted.
+	// it has the component "contact"
 
 	// using for sprite update
 	int _mapArrayWidth{ 0 };
@@ -103,10 +112,11 @@ private:
 	//(0,0) ~ (47, 26) : normal
 	//array[48][27] : edge
 	std::array<std::array<Sprite*, 49>, 49> _mapSprites;
-	std::vector<std::tuple<Rect, b2Body*>> _vecRect;
+	
 	//std::vector<b2Body*> _sortedByDistance;
 
-	const std::string crackedSpritePath = "img/cracked.png";
+	const std::string _crackedSpritePath = "img/cracked.png";
+	bool _shouldCheckButton = false;
 //	cocos2d::Node* _batchNode{ nullptr };
 //	cocos2d::Node* _black{ nullptr };
 	
