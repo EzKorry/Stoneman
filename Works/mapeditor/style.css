@@ -14,6 +14,9 @@ button:focus {
 button:hover{
   cursor:pointer;
 }
+button.selected {
+  background-color:#aaa;
+}
 
 .canvas {
   background-color:#777;
@@ -50,6 +53,8 @@ button:hover{
   border:1px solid #0f0;
   overflow:hidden;
   display:none;
+  z-index: 9999;
+
 
 }
 
@@ -80,6 +85,14 @@ button:hover{
 .grid {
   position:absolute;
 }
+.map_elements {
+  position:absolute;
+  top:0;
+  bottom:0;
+  left:0;
+  right:0;
+  z-index:5;
+}
 .map_element {
     position: absolute;
     background-color: #aaa;
@@ -93,8 +106,31 @@ button:hover{
   background-color: #fff;
   border: 1px solid #ff4b8d;
 }
+.lines {
+    z-index: 3;
+    position: absolute;
+    bottom: 0;
+    top: 0;
+    left: 0;
+    right: 0;
+}
+.lines .line {
+  position:absolute;
+  background-color:#aaa;
+}
 
-
+.lines .line.left_right {
+  left:0;
+  right:0;
+  width:auto;
+  height:1px;
+}
+.lines .line.bottom_top {
+  top:0;
+  bottom:0;
+  height:auto;
+  width:1px;
+}
 
 .map_element.type_location {
   background-color: #8e91ff;
