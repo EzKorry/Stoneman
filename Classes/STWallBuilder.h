@@ -85,10 +85,14 @@ private:
 	//std::map<std::string, b2Body*> _wallName;
 	//std::vector<std::tuple<Rect, b2Body*>> _vecRect;
 	std::map<WallType, std::string> _wallSpriteFrameName;
+
+public:
 	WallType getWallTypeWithName(const std::string & name);
 	WallButtonActionType getWallButtonActionType(const std::string & name);
 	STWall* getWallByBody(b2Body* body);
 	STWall* getWallByName(const std::string& name);
+
+private:
 
 	void removeWall(STWall* wall);
 

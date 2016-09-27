@@ -25,12 +25,14 @@
 #include <future>
 #include <fstream>
 #include <random>
+#include <STStageEventMaker.h>
+#include "STWall.h"
 
 USING_NS_CC;
 
 using namespace std;
 float IngameScene::_timeScale = 1.0f;
-std::shared_ptr<b2World> IngameScene::world = nullptr;
+std::shared_ptr<b2World> IngameScene::_world = nullptr;
 std::shared_ptr<STContactListener> IngameScene::_cl_p = nullptr;
 const float IngameScene::OneBlockPx = 20.f;
 IngameScene* IngameScene::_uniqueScene = nullptr;
@@ -130,8 +132,12 @@ void IngameScene::appInit()
 
 	
 	// Json load map file.
-	auto js = fu->getStringFromFile("map3.json");
+	auto js = fu->getStringFromFile("map.json");
 	_maps.Parse(js.c_str());
+
+	// load user data from json.
+	auto dm = apDataManager::getInstance();
+	dm->loadData("user_data.json");
 
 
 	// initialize member variables.
@@ -277,13 +283,10 @@ void IngameScene::organizeScene()
 	
 	// restore all of the stage when it before start.
 	actionManager->addAction("remove_stage", "m",this, [this]() {
-
+		_floorFixtures.clear();
 		_localActionManager->removeAllActions();
 		apAnimationManager::getInstance()->disconnect();
-		_localUpdater->delFunc(P_WORLDSTEP);
-		_localUpdater->delFunc(P_AFTER_WORLDSTEP);
-		_localUpdater->delFunc(P_CAMERA);
-		_localUpdater->delFunc(P_REPLACEMAPSPRITES);
+		_localUpdater->delAllFunc();
 
 		_camera->removeAllChildren();
 		_masterField->removeAllChildren();
@@ -292,8 +295,8 @@ void IngameScene::organizeScene()
 
 		_backgroundFollowRatio.clear();
 
-		_debugBox->get() << "world count: " << world.use_count() << DebugBox::push;
-		world = nullptr;
+		_debugBox->get() << "world count: " << _world.use_count() << DebugBox::push;
+		_world = nullptr;
 	});
 
 	/*auto debugRefreshPics = [this]() {
@@ -322,6 +325,11 @@ void IngameScene::organizeScene()
 }
 
 void IngameScene::debugVariable() {
+
+	//debug test
+	
+
+
 	//-----------------------------------------
 	// add variable settings editbox
 	//------------------------------------------
@@ -816,7 +824,7 @@ void IngameScene::gameInterface()
 
 	am->addAction("slow_motion", "m", _wallBuilder, [this](float start, float duration) {
 		float elapsed = 0.f;
-		_characterNode->setZOrder(MFZORDER_EMPH_CHARNODE);
+		_characterNode->setLocalZOrder(MFZORDER_EMPH_CHARNODE);
 		auto blackSp = _masterField->getChildByName("black_square")->getChildByName("sp");
 		if(blackSp) blackSp->setOpacity(_slowMotionSpOpacity);
 		_scheduler->unschedule("slow_motion", _wallBuilder);
@@ -825,7 +833,7 @@ void IngameScene::gameInterface()
 			if (elapsed > duration) {
 				_scheduler->unschedule("slow_motion", _wallBuilder);
 				_localScheduler->setTimeScale(1.f);
-				_characterNode->setZOrder(MFZORDER_CHARNODE);
+				_characterNode->setLocalZOrder(MFZORDER_CHARNODE);
 				if (blackSp) {
 					blackSp->setOpacity(0);
 				}
@@ -850,14 +858,14 @@ void IngameScene::initializePhysics(const std::string& level)
 	_level = level;
 	auto visibleSize = Director::getInstance()->getVisibleSize();
 	auto gravity = b2Vec2(0.0f, -40.0f);
-	world = std::make_shared<b2World>(gravity);
+	_world = std::make_shared<b2World>(gravity);
 
 	_cl_p = std::make_shared<STContactListener>();
-	world->SetContactListener(_cl_p.get());
+	_world->SetContactListener(_cl_p.get());
 
 #if  (CC_TARGET_PLATFORM == CC_PLATFORM_WIN32)
 	_debugDraw = std::make_shared<GLESDebugDraw>(SCALE_RATIO);
-	world->SetDebugDraw(_debugDraw.get());
+	_world->SetDebugDraw(_debugDraw.get());
 	uint32 flags = 0;
 	flags += b2Draw::e_shapeBit;
 	_debugDraw->SetFlags(flags);
@@ -1046,23 +1054,33 @@ void IngameScene::initializePhysics(const std::string& level)
 	charFixtureDef.restitution = 0;
 	charFixtureDef.shape = &charShape;
 	charFixtureDef.filter.categoryBits = CHARACTER;
-	charFixtureDef.filter.maskBits = CHARACTER || BOSS || WALL;
+	charFixtureDef.filter.maskBits = CHARACTER | BOSS | WALL | LOCATION;
 
 
-	auto& startCoord = _maps["level"][_level.c_str()]["start"];
+	
 	b2BodyDef charBodyDef;
 	//charBodyDef.position.Set((startCoord["x"].GetInt() * OneBlockPx) / SCALE_RATIO, (startCoord["y"].GetInt() * OneBlockPx) / SCALE_RATIO);
 	//charBodyDef.userData = _sp;
 	charBodyDef.fixedRotation = true;
 	charBodyDef.type = b2BodyType::b2_dynamicBody;
 
-	_charBody = world->CreateBody(&charBodyDef);
+	_charBody = _world->CreateBody(&charBodyDef);
 	_charBody->CreateFixture(&charFixtureDef);
 
 	_characterNode = STBox2dNode::createWithBox2dBody(_charBody);
 	_characterNode->addChild(_sp);
 	_masterField->addChild(_characterNode, MFZORDER_CHARNODE, "character_node");
-	_characterNode->setBodyPositionBlock(Vec2(startCoord["x"].GetInt(), startCoord["y"].GetInt()));
+	hookActionManager->addAction("after_make_wall", "initialize_character_position", _characterNode, 
+		[this]() {
+		auto startLocName = _maps["level"][_level.c_str()]["start"].GetString();
+		auto startLocation = _wallBuilder->getWallByName(startLocName);
+		auto startRect = startLocation->getRect();
+		_characterNode->setBodyPosition(Vec2(startRect.getMidX(), startRect.getMidY()));
+
+		
+	});
+	
+	
 	_charBody->SetUserData(_characterNode);
 
 	// origin Air resistance setting.
@@ -1203,7 +1221,7 @@ void IngameScene::initializePhysics(const std::string& level)
 			worldManifold.normal.y,
 			impulse->normalImpulses[0],
 			impulse->normalImpulses[1], // useless. -107374176.00
-			impulse->tangentImpulses[0], // useless. -0.00
+			impulse->tangellntImpulses[0], // useless. -0.00
 			impulse->tangentImpulses[1]); // useless. -107374176.00*/
 			// if hit Ground!
 		if (_goFloorEffect == true
@@ -1334,11 +1352,11 @@ void IngameScene::initializePhysics(const std::string& level)
 
 
 		// world step.
-		world->Step(delta, _velocityIterations, _positionIterations);
+		_world->Step(delta, _velocityIterations, _positionIterations);
 
 
 		// update node position
-		for (b2Body *body = world->GetBodyList(); body != NULL; body =
+		for (b2Body *body = _world->GetBodyList(); body != NULL; body =
 			body->GetNext())
 			if (body->GetUserData()) {
 				auto node = (Node*)body->GetUserData();
@@ -1349,7 +1367,7 @@ void IngameScene::initializePhysics(const std::string& level)
 
 			}
 		//clear forces 
-		world->ClearForces();
+		_world->ClearForces();
 	});
 
 	// camera
@@ -1397,6 +1415,10 @@ void IngameScene::initializePhysics(const std::string& level)
 	blackSquareSp->setCascadeOpacityEnabled(true);
 	blackSquareSp->setOpacity(0);
 	blackSquare->addChild(blackSquareSp, 0, "sp");
+
+
+	// event Maker
+	STStageEventMaker::makeStageEvent(level);
 	
 }
 void IngameScene::initializeEffectManager()
@@ -1468,6 +1490,12 @@ void IngameScene::jumpTouchEnd() {
 
 }
 
+STWall * IngameScene::getWallByBody(b2Body * body)
+{
+	return _wallBuilder->getWallByBody(body);
+}
+
+
 void IngameScene::addTextField(const std::function<void(cocos2d::ui::EditBox*)>& callback, const std::string& placeHolder) {
 
 	auto visibleSize = Director::getInstance()->getVisibleSize();
@@ -1524,7 +1552,7 @@ void IngameScene::replaceBox() {
 }
 std::shared_ptr<b2World> IngameScene::getb2World()
 {
-	return IngameScene::world;
+	return IngameScene::_world;
 }
 std::shared_ptr<STContactListener> IngameScene::getContactListener()
 {
@@ -1556,9 +1584,9 @@ void IngameScene::addWall(float px, float py, float w, float h) {
 	floorBodyDef.userData = sp;
 
 
-	auto wallBody = world->CreateBody(&floorBodyDef);
+	auto wallBody = _world->CreateBody(&floorBodyDef);
 	wallBody->CreateFixture(&floorFixture);
-	_walls.emplace_back(wallBody);
+	//_walls.emplace_back(wallBody);
 
 }
 
@@ -1633,8 +1661,8 @@ void IngameScene::characterHitRightWall(float power) {
 void IngameScene::draw(Renderer *renderer, const Mat4& transform, uint32_t transformUpdated) {
 	
 	glEnableVertexAttribArray(0);
-	if (world) {
-		world->DrawDebugData();
+	if (_world) {
+		_world->DrawDebugData();
 	}
 
 }
@@ -1670,9 +1698,6 @@ b2Body* IngameScene::getCharBody() {
 	return _charBody;
 }
 
-std::vector<b2Body*> IngameScene::getWalls() {
-	return _walls;
-}
 
 void IngameScene::scheduleLocally(const std::function<void(float)>& callback, float interval, unsigned int repeat, float delay, const std::string & key)
 {
@@ -1790,6 +1815,11 @@ void IngameScene::UpdateCaller::delFunc(int priority)
 	}
 	cocos2d::log("UpdateCaller-delFunc - key doesn't exist!");
 
+}
+
+void IngameScene::UpdateCaller::delAllFunc()
+{
+	_list.clear();
 }
 
 IngameScene::UpdateCaller::UpdateCaller()

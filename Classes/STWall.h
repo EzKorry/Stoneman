@@ -10,7 +10,8 @@ enum class WallType {
 	Breakable,
 	ButtonOn,
 	ButtonOff,
-	Teleport
+	Teleport,
+	Location
 };
 
 enum class WallButtonActionType {
@@ -40,13 +41,18 @@ public:
 	bool init();
 
 	// getter.
-	inline std::string getName();
-	inline WallType getWallType();
-	inline Rect getRect();
+	std::string getName();
+	WallType getWallType();
+	Rect getRect();
 	/*inline std::vector<b2Fixture*> getFixtures();*/
-	inline b2Body* getBody();
+	b2Body* getBody();
 
-	void runAction(WallButtonActionType type, void* object);
+	void setPosition(const Vec2& position);
+	void setPosition(const b2Vec2& position);
+	Vec2 getPosition();
+	b2Vec2 getb2Position();
+
+	//void runAction(WallButtonActionType type, void* object);
 
 
 	// setter
@@ -63,7 +69,7 @@ private:
 	WallType _wallType;
 	const Rect _rect;
 	b2Body* const _body;
-	std::map<WallButtonActionType, std::string> _wall
+	std::map<WallButtonActionType, std::string> _wall;
 
 };
 

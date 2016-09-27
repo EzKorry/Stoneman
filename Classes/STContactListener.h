@@ -53,10 +53,10 @@ public:
 
 private:
 
-	std::unordered_map<b2Fixture*, C_BeginContact> _c_beginContact;
-	std::unordered_map<b2Fixture*, C_EndContact> _c_endContact;
-	std::unordered_map<b2Fixture*, C_PreSolve> _c_preSolve;
-	std::unordered_map<b2Fixture*, C_PostSolve> _c_postSolve;
+	std::unordered_map<b2Fixture*, std::vector<C_BeginContact>> _c_beginContact;
+	std::unordered_map<b2Fixture*, std::vector<C_EndContact>> _c_endContact;
+	std::unordered_map<b2Fixture*, std::vector<C_PreSolve>> _c_preSolve;
+	std::unordered_map<b2Fixture*, std::vector<C_PostSolve>> _c_postSolve;
 	std::unordered_map<b2Body*, std::set<b2Fixture*>> _bodyToFixture;
 
 

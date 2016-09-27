@@ -7,7 +7,7 @@
 			<key>button_off.png</key>
 			<dict>
 				<key>frame</key>
-				<string>{{0,82},{40,40}}</string>
+				<string>{{0,41},{40,40}}</string>
 				<key>offset</key>
 				<string>{0,0}</string>
 				<key>rotated</key>
@@ -21,7 +21,7 @@
 			<key>button_on.png</key>
 			<dict>
 				<key>frame</key>
-				<string>{{0,41},{40,40}}</string>
+				<string>{{0,82},{40,40}}</string>
 				<key>offset</key>
 				<string>{0,0}</string>
 				<key>rotated</key>
@@ -33,6 +33,20 @@
 			</dict>
 
 			<key>cracked.png</key>
+			<dict>
+				<key>frame</key>
+				<string>{{41,0},{40,40}}</string>
+				<key>offset</key>
+				<string>{0,0}</string>
+				<key>rotated</key>
+				<false/>
+				<key>sourceColorRect</key>
+				<string>{{0,0},{40,40}}</string>
+				<key>sourceSize</key>
+				<string>{40,40}</string>
+			</dict>
+
+			<key>none.png</key>
 			<dict>
 				<key>frame</key>
 				<string>{{0,0},{40,40}}</string>
@@ -49,7 +63,7 @@
 			<key>tile2.png</key>
 			<dict>
 				<key>frame</key>
-				<string>{{0,82},{40,40}}</string>
+				<string>{{0,41},{40,40}}</string>
 				<key>offset</key>
 				<string>{0,0}</string>
 				<key>rotated</key>
@@ -67,7 +81,7 @@
 			<key>format</key>
 			<integer>2</integer>
 			<key>size</key>
-			<string>{64,128}</string>
+			<string>{128,128}</string>
 			<key>textureFileName</key>
 			<string>sprites2.png</string>
 			</dict>

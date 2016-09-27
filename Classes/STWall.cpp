@@ -1,5 +1,5 @@
 #include "STWall.h"
-
+#include "STMacros.h"
 
 
 STWall::STWall(const std::string& name,
@@ -42,7 +42,28 @@ b2Body * STWall::getBody()
 	return _body;
 }
 
-void STWall::runAction(WallButtonActionType type, void * object)
+void STWall::setPosition(const Vec2 & position)
+{
+	setPosition(b2Vec2(position.x / SCALE_RATIO, position.y / SCALE_RATIO));
+}
+
+void STWall::setPosition(const b2Vec2 & position)
+{
+	_body->SetTransform(position, _body->GetAngle());
+}
+
+Vec2 STWall::getPosition()
+{
+	auto bp = getb2Position();
+	return Vec2(bp.x * SCALE_RATIO, bp.y * SCALE_RATIO);
+}
+
+b2Vec2 STWall::getb2Position()
+{
+	return _body->GetPosition();
+}
+
+/*void STWall::runAction(WallButtonActionType type, void * object)
 {
 	switch (type) {
 	case WallButtonActionType::TurnButtonOff:
@@ -61,7 +82,7 @@ void STWall::runAction(WallButtonActionType type, void * object)
 
 		break;
 	}
-}
+}*/
 
 void STWall::setWallType(WallType wallType)
 {
@@ -82,7 +103,7 @@ STWall * STWall::create(
 	STWall * ret = new (std::nothrow) STWall(name, wallType, rect, /*fixtures,*/ body);
 	if (ret && ret->init())
 	{
-
+		//body->SetUserData(ret);
 	}
 	else
 	{

@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <title>Map Editor</title>
     <script src="jquery-3.1.0.js" charset="utf-8"></script>
+    <script src="clipboard.js" charset="utf-8"></script>
     <link rel="stylesheet" href="style.css">
   </head>
   <body>
@@ -22,9 +23,9 @@
     <button type="button" name="save" onclick="save_clicked()">저장</button>
     <div class="inputs">
       <label for="width">가로</label>
-      <input type="text" name="width" value="" size="10">
+      <input type="number" step="1" name="width" value="" size="10">
       <label for="height">세로</label>
-      <input type="text" name="height" value="" size="10">
+      <input type="number" step="1" min="0" max="1000" name="height" value="" size="10">
       <br>
       <label for="mapName">맵이름</label>
       <input type="text" name="mapName" value="" size="10">
@@ -66,7 +67,7 @@
           <label for="wall_x">x</label>
         </td>
         <td>
-          <input type="number" id="wall_x" name="wall_x" value="" size="5">
+          <input type="number" id="wall_x" step="1" name="wall_x" value="" size="5">
         </td>
       </tr>
       <tr>
@@ -74,7 +75,7 @@
           <label for="wall_y">y</label>
         </td>
         <td>
-          <input type="number" id="wall_y" name="wall_y" value="" size="5">
+          <input type="number" id="wall_y" step="1" name="wall_y" value="" size="5">
         </td>
       </tr>
       <tr>
@@ -82,7 +83,7 @@
           <label for="wall_width">width</label>
         </td>
         <td>
-          <input type="number" id="wall_width" name="wall_width" value="" size="5">
+          <input type="number" id="wall_width" step="1" name="wall_width" value="" size="5">
         </td>
       </tr>
       <tr>
@@ -90,21 +91,25 @@
           <label for="wall_height">height</label>
         </td>
         <td>
-          <input type="number" id="wall_height" name="wall_height" value="" size="5">
+          <input type="number" id="wall_height" step="1" name="wall_height" value="" size="5">
         </td>
       </tr>
     </table>
-    <button type="button" name="save_wall">저장</button>
+    <!--<button type="button" name="save_wall">저장</button>-->
     <button type="button" name="remove_wall">삭제</button>
     <button type="button" name="close_wall">닫기</button>
   </div>
 </div>
-<textarea cols="100" rows="20" id="output">
+<textarea id="output">
 </textarea>
+<button class="btn" data-clipboard-target="#output">
+    복사하기
+</button>
 
 
 <!-- 스크립트 -->
 <script>
+  new Clipboard('.btn');
   var onePoint = 20;
   var map = {};
   var nowMapName;
@@ -115,21 +120,22 @@
     select: 2,
     move: 3,
     starting_point: 4,
+    nowMode: 2,
     changeMode: function(num) {
       initialCanvas();
-      nowMode = num;
-      if(num == this.move) {
+      this.nowMode = num;
+      if(num === this.move) {
         $('.drag_cutton').css('display', 'block');
         $('button[name=move]').addClass('selected');
       }
-      else if(num == this.square) {
+      else if(num === this.square) {
         $('.make_square_cutton').css('display', 'block');
         $('button[name=make_square]').addClass('selected');
       }
-      else if(num == this.starting_point) {
+      else if(num === this.starting_point) {
         $('.starting_point_cutton').css('display', 'block');
 
-      } else if( num == this.select) {
+      } else if( num === this.select) {
         $('button[name=select]').addClass('selected');
       }
       //console.log(nowMode);
@@ -211,23 +217,23 @@
         //xy.y = toPx(xy.y)
         xy.x = toXYCordinate(xy.x);
         xy.y = toXYCordinate(xy.y);
-        console.log(xy);
+        //console.log(xy);
 
         var emptyBoxConfig = {};
         emptyBoxConfig.x = xy.x;
         emptyBoxConfig.y = xy.y;
-        emptyBoxConfig.width = 5;
-        emptyBoxConfig.height = 5;
+        emptyBoxConfig.w = 5;
+        emptyBoxConfig.h = 5;
         emptyBoxConfig.name = '';
-        emptyBoxConfig.type = 'location';
+        emptyBoxConfig.type = 'solid_wall';
 
         addNewBox(emptyBoxConfig);
 
 
       });
 
-      // wall save 눌렀을 때
-      $("button[name=save_wall]").click(function(e) {
+      // wall의 속성들 업데이트
+      var update_form_wall = function(e) {
 
         wallEditing.css('left', $('#wall_x').val() * onePoint)
         .css('bottom', $('#wall_y').val() * onePoint)
@@ -238,12 +244,29 @@
         .addClass('name_' + $('#wall_name').val())
         .addClass('type_' + $('#wall_type').val());
 
-
-        $(".popup").css('display', "none");
-
+        wallEditing.find('span.name').text($('#wall_name').val());
 
 
-      });
+
+      };
+
+      // save wall을 눌렀을때
+      $("button[name=save_wall]").click((function(func){
+        return function(e) {
+          func(e);
+          $(".popup").css('display', "none");
+        };
+      })(update_form_wall));
+
+      // wall의 속성 자동갱신.
+      $('#wall_name').change(update_form_wall);
+      $('#wall_type').change(update_form_wall);
+      $('#wall_x').change(update_form_wall);
+      $('#wall_y').change(update_form_wall);
+      $('#wall_width').change(update_form_wall);
+      $('#wall_height').change(update_form_wall);
+
+
       // wall 삭제하기 눌렀을때
       $("button[name=remove_wall]").click(function(e) {
         wallEditing.remove();
@@ -293,15 +316,53 @@
 
       })();
 
+      (function() {
+        var focused = false;
+        var spaceBarMoveMode = false;
+        var prevMode = 1;
+        $('input').focusin(function(e){
+          focused = true;
+        });
+        $('input').focusout(function(e){
+          focused = false;
+        });
+        $(document).keydown(function(e) {
+          if(!focused) {
+            if(e.key === '1') {
+              make_square_clicked();
+            } else if(e.key === '2') {
+              move_clicked();
+            } else if(e.key === '3') {
+              select_clicked();
+            }
+            // move mode
+            else if(e.key === ' ' && !spaceBarMoveMode) {
+              e.preventDefault();
+              spaceBarMoveMode = true;
+              prevMode = mode.nowMode;
+              mode.changeMode(mode.move);
+              console.log(prevMode);
+            } else if(e.key === ' ') {
+              e.preventDefault();
+            }
 
-      $(document).keydown(function(e) {
-        if(e.key === '1') {
-          make_square_clicked();
-        } else if(e.key === '2') {
-          move_clicked();
-        } else if(e.key === '3') {
-          select_clicked();
-        }
+          }
+
+        });
+        $(document).keyup(function(e) {
+          if(spaceBarMoveMode && e.key === ' ') {
+            spaceBarMoveMode = false;
+            mode.changeMode(prevMode);
+            console.log(prevMode);
+          }
+        });
+      })();
+
+
+
+
+      $('button[name=copy_result]').click(function(e) {
+
       });
 
 
@@ -316,20 +377,25 @@
     newBox.addClass('map_element')
     .addClass('type_' + obj.type)
     .addClass('name_' + obj.name)
-    .css('width', obj.width * onePoint + 'px')
-    .css('height', obj.height * onePoint + 'px')
+    .css('width', obj.w * onePoint + 'px')
+    .css('height', obj.h * onePoint + 'px')
     .css('left', obj.x * onePoint + 'px')
     .css('bottom', obj.y * onePoint + 'px')
     .appendTo('.map_elements')
     .on('click', mapElementClicked);
+
+    var t = $('<span/>');
+    t.text(obj.name)
+    .addClass('name')
+    .appendTo(newBox);
   }
   // DOM 구조에서 에서 데이터 뽑아내기.
   function getWall(obj) {
     var wall = {};
     wall.x = parseInt(obj.css('left')) / onePoint;
     wall.y = parseInt(obj.css('bottom')) / onePoint;
-    wall.width = parseInt(obj.css('width')) / onePoint;
-    wall.height = parseInt(obj.css('height')) / onePoint;
+    wall.w = parseInt(obj.css('width')) / onePoint;
+    wall.h = parseInt(obj.css('height')) / onePoint;
     var classString = obj.attr('class');
     var classes = classString.split(" ");
     wall.type = '';
@@ -358,8 +424,8 @@
     $('#wall_type').val(wall.type);
     $('#wall_x').val(wall.x);
     $('#wall_y').val(wall.y);
-    $('#wall_width').val(wall.width);
-    $('#wall_height').val(wall.height);
+    $('#wall_width').val(wall.w);
+    $('#wall_height').val(wall.h);
 
   }
   function updateCanvasSize() {
@@ -477,7 +543,7 @@
       walls.push(wall);
     });
     map.level[nowMapName].walls = walls;
-    $('#output').text(JSON.stringify(map));
+    $('#output').val(JSON.stringify(map));
   }
 
   function canvas_initialize(obj) {

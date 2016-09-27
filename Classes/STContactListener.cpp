@@ -17,12 +17,18 @@ void STContactListener::BeginContact(b2Contact* contact) {
 	auto fb = contact->GetFixtureB();
 
 	if(_c_beginContact.find(fa) != _c_beginContact.end()) {
-		_c_beginContact[fa](contact, fb);
+		for (auto& func : _c_beginContact[fa]) {
+			func(contact, fb);
+		}
+		//_c_beginContact[fa](contact, fb);
 
 	}
 
 	if(_c_beginContact.find(fb) != _c_beginContact.end()) {
-		_c_beginContact[fb](contact, fa);
+		for (auto& func : _c_beginContact[fb]) {
+			func(contact, fa);
+		}
+		//_c_beginContact[fb](contact, fa);
 
 	}
 
@@ -37,12 +43,18 @@ void STContactListener::EndContact(b2Contact* contact) {
 	auto fb = contact->GetFixtureB();
 
 	if(_c_endContact.find(fa) != _c_endContact.end()) {
-		_c_endContact[fa](contact, fb);
+		for (auto& func : _c_endContact[fa]) {
+			func(contact, fb);
+		}
+		//_c_endContact[fa](contact, fb);
 
 	}
 
 	if(_c_endContact.find(fb) != _c_endContact.end()) {
-		_c_endContact[fb](contact, fa);
+		for (auto& func : _c_endContact[fb]) {
+			func(contact, fa);
+		}
+		//_c_endContact[fb](contact, fa);
 
 	}
 
@@ -65,12 +77,18 @@ void STContactListener::PreSolve(b2Contact* contact, const b2Manifold* oldManifo
 	auto fb = contact->GetFixtureB();
 
 	if(_c_preSolve.find(fa) != _c_preSolve.end()) {
-		_c_preSolve[fa](contact, oldManifold, fb);
+		for (auto& func : _c_preSolve[fa]) {
+			func(contact, oldManifold, fb);
+		}
+		//_c_preSolve[fa](contact, oldManifold, fb);
 
 	}
 
 	if(_c_preSolve.find(fb) != _c_preSolve.end()) {
-		_c_preSolve[fb](contact, oldManifold, fa);
+		for (auto& func : _c_preSolve[fb]) {
+			func(contact, oldManifold, fa);
+		}
+		//_c_preSolve[fb](contact, oldManifold, fa);
 
 	}
 
@@ -92,12 +110,18 @@ void STContactListener::PostSolve(b2Contact* contact, const b2ContactImpulse* im
 	auto fb = contact->GetFixtureB();
 
 	if(_c_postSolve.find(fa) != _c_postSolve.end()) {
-		_c_postSolve[fa](contact, impulse, fb);
+		for (auto& func : _c_postSolve[fa]) {
+			func(contact, impulse, fb);
+		}
+		//_c_postSolve[fa](contact, impulse, fb);
 
 	}
 
 	if(_c_postSolve.find(fb) != _c_postSolve.end()) {
-		_c_postSolve[fb](contact, impulse, fa);
+		for (auto& func : _c_postSolve[fb]) {
+			func(contact, impulse, fa);
+		}
+		//_c_postSolve[fb](contact, impulse, fa);
 
 	}
 }
@@ -105,56 +129,57 @@ void STContactListener::PostSolve(b2Contact* contact, const b2ContactImpulse* im
 void STContactListener::setBeginContact(b2Fixture* fixture,
 		const C_BeginContact& callback) {
 
-	_c_beginContact[fixture] = callback;
+	_c_beginContact[fixture].push_back(callback);
 
 }
 void STContactListener::setBeginContact(b2Body* body,
 		const C_BeginContact& callback) {
 	for (auto fixture = body->GetFixtureList(); fixture != nullptr;
 			fixture = fixture->GetNext()) {
-		_c_beginContact[fixture] = callback;
+		//_c_beginContact[fixture] = callback;
+		_c_beginContact[fixture].push_back(callback);
 		_bodyToFixture[body].emplace(fixture);
 	}
 
 }
 void STContactListener::setEndContact(b2Fixture* fixture,
 		const C_EndContact& callback) {
-	_c_endContact[fixture] = callback;
-
+	//_c_endContact[fixture] = callback;
+	_c_endContact[fixture].push_back(callback);
 }
 void STContactListener::setEndContact(b2Body* body,
 		const C_EndContact& callback) {
 	for (auto fixture = body->GetFixtureList(); fixture != nullptr;
 			fixture = fixture->GetNext()) {
 
-		_c_endContact[fixture] = callback;
+		_c_endContact[fixture].push_back(callback);
 		_bodyToFixture[body].emplace(fixture);
 	}
 
 }
 void STContactListener::setPreSolve(b2Fixture* fixture,
 		const C_PreSolve& callback) {
-	_c_preSolve[fixture] = callback;
+	_c_preSolve[fixture].push_back(callback);
 
 }
 void STContactListener::setPreSolve(b2Body* body, const C_PreSolve& callback) {
 	for (auto fixture = body->GetFixtureList(); fixture != nullptr;
 			fixture = fixture->GetNext()) {
-		_c_preSolve[fixture] = callback;
+		_c_preSolve[fixture].push_back(callback);
 		_bodyToFixture[body].emplace(fixture);
 	}
 
 }
 void STContactListener::setPostSolve(b2Fixture* fixture,
 		const C_PostSolve& callback) {
-	_c_postSolve[fixture] = callback;
+	_c_postSolve[fixture].push_back(callback);
 
 }
 void STContactListener::setPostSolve(b2Body* body,
 		const C_PostSolve& callback) {
 	for (auto fixture = body->GetFixtureList(); fixture != nullptr;
 			fixture = fixture->GetNext()) {
-		_c_postSolve[fixture] = callback;
+		_c_postSolve[fixture].push_back(callback);
 		_bodyToFixture[body].emplace(fixture);
 	}
 

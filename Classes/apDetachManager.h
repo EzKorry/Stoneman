@@ -49,7 +49,16 @@ public:
 	virtual ~apDetachManager();
 
 	void addNode(cocos2d::Node* node);
+
+	// Each Manager calls this method.
 	void addNode(cocos2d::Node* node, apDetachManagerType t);
+
+	// It calls when node on exit. ( setOnExitCallback )
+	// order
+	// 1. manager (derived from DetachInterface) -> detach();
+	// 2. scheduler pauseTarget()
+	// 3. actionManager pauseTarget()
+	// 4. Erase from list.
 	void detach(cocos2d::Node* node);
 	void addScheduler(cocos2d::Scheduler* scheduler);
 	void addActionManager(cocos2d::ActionManager* actionManager);

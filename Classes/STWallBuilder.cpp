@@ -1,4 +1,5 @@
 #include "STWallBuilder.h"
+#include "STWall.h"
 #include "IngameScene.h"
 #include <boost/coroutine/all.hpp>
 #include "apAsyncTaskManager.h"
@@ -39,8 +40,8 @@ void STWallBuilder::makeWalls(rapidjson::Document& j, const std::string & level)
 		b.AddMember("y", y, j.GetAllocator());
 		b.AddMember("w", w, j.GetAllocator());
 		b.AddMember("h", h, j.GetAllocator());
-		b.AddMember("type", "wall", j.GetAllocator());
-		b.AddMember("tile", "tile2", j.GetAllocator());
+		b.AddMember("type", "solid_wall", j.GetAllocator());
+		b.AddMember("name", "", j.GetAllocator());
 		/*b["x"].SetInt(x);
 		b["y"].SetInt(y);
 		b["w"].SetInt(w);
@@ -73,7 +74,7 @@ void STWallBuilder::makeWalls(rapidjson::Document& j, const std::string & level)
 	};
 	auto map_w = s["w"].GetInt();
 	auto map_h = s["h"].GetInt();
-	
+	/*
 	w.PushBack(moveTo(0, 0), jal);
 	w.PushBack(makeSolidWall(-1, map_h), jal);
 	w.PushBack(moveTo(0, map_h), jal);
@@ -81,12 +82,12 @@ void STWallBuilder::makeWalls(rapidjson::Document& j, const std::string & level)
 	w.PushBack(moveTo(map_w, 0), jal);
 	w.PushBack(makeSolidWall(1, map_h), jal);
 	w.PushBack(moveTo(0, 0), jal);
-	w.PushBack(makeSolidWall(map_w, -1), jal);
+	w.PushBack(makeSolidWall(map_w, -1), jal);*/
 
-	/*w.PushBack(createB(-1, -1, 1, s["h"].GetInt() + 2), j.GetAllocator()); // left
+	w.PushBack(createB(-1, -1, 1, s["h"].GetInt() + 2), j.GetAllocator()); // left
 	w.PushBack(createB(s["w"].GetInt(), -1, 1, s["h"].GetInt() + 2), j.GetAllocator()); // right
 	w.PushBack(createB(0, -1, s["w"].GetInt(), 1), j.GetAllocator()); // bottom
-	w.PushBack(createB(0, s["h"].GetInt(), s["w"].GetInt(), 1), j.GetAllocator()); // top*/
+	w.PushBack(createB(0, s["h"].GetInt(), s["w"].GetInt(), 1), j.GetAllocator()); // top
 	
 
 	boost::coroutines::symmetric_coroutine<void>::call_type makeWallsCoroutine(
@@ -108,6 +109,7 @@ void STWallBuilder::makeWalls(rapidjson::Document& j, const std::string & level)
 		auto& nowX = std::get<0>(nowXY);
 		auto& nowY = std::get<1>(nowXY);
 
+		// MakeWalls
 		for (auto it = w.Begin();it != w.End();	it++) {
 
 			auto& map = *it;
@@ -119,9 +121,11 @@ void STWallBuilder::makeWalls(rapidjson::Document& j, const std::string & level)
 
 
 			if (!map.HasMember("type")) return;
+
 			std::string type = map["type"].GetString();
 
 			// If Move to Specific Checkpoint,
+			/*
 			if (type == "move_checkpoint") {
 				nowXY = checkpoints[map["checkpoint"].GetString()];
 			}
@@ -182,7 +186,13 @@ void STWallBuilder::makeWalls(rapidjson::Document& j, const std::string & level)
 					);
 				}
 			}
+			*/
+			x_int = map["x"].GetInt();
+			y_int = map["y"].GetInt();
+			h_int = map["h"].GetInt();
+			w_int = map["w"].GetInt();
 
+			hasToMakeWall = true;
 			if (hasToMakeWall) {
 
 
@@ -191,14 +201,17 @@ void STWallBuilder::makeWalls(rapidjson::Document& j, const std::string & level)
 				auto py = y_int * pxRatio;
 				auto w = w_int * pxRatio;
 				auto h = h_int * pxRatio;
-				std::string tileName;
+				/*std::string tileName
+
 				if (type == "button") {
 					tileName = "button_off.png";
 				}
 				else {
-					tileName = map["tile"].GetString();
-					tileName.append(".png");
+
+					//tileName = map["tile"].GetString();
+					//tileName.append(".png");
 				}
+				tileName = "tile2.png";*/
 				
 
 
@@ -218,14 +231,14 @@ void STWallBuilder::makeWalls(rapidjson::Document& j, const std::string & level)
 
 				b2BodyDef floorBodyDef;
 				floorBodyDef.position.Set(px / SCALE_RATIO, py / SCALE_RATIO);
-				//floorBodyDef.userData = this;
+				floorBodyDef.userData = nullptr;
 				floorBodyDef.type = b2BodyType::b2_staticBody;
 				auto wallBody = world->CreateBody(&floorBodyDef);
 
-				b2EdgeShape edgeShape;
+				
 				b2FixtureDef myFixtureDef;
-				myFixtureDef.shape = &edgeShape;
-				//myFixtureDef.userData = _wallFixtureEventGetter;
+				
+				//myFixtureDef.userData = _wallFixtureEventGetter;c
 
 				b2Vec2 leftBottom(0 / SCALE_RATIO, 0 / SCALE_RATIO);
 				b2Vec2 leftTop(0 / SCALE_RATIO, h / SCALE_RATIO);
@@ -233,37 +246,59 @@ void STWallBuilder::makeWalls(rapidjson::Document& j, const std::string & level)
 				b2Vec2 rightTop(w / SCALE_RATIO, h / SCALE_RATIO);
 
 				//Edge shape for...
-				// left
-				edgeShape.Set(leftBottom, leftTop);
-				edgeShape.m_vertex0.Set(leftBottom.x, leftBottom.y - 1);
-				edgeShape.m_vertex3.Set(leftTop.x, leftTop.y + 1);
-				edgeShape.m_hasVertex0 = true;
-				edgeShape.m_hasVertex3 = true;
-				wallBody->CreateFixture(&myFixtureDef);
 
-				// top
-				edgeShape.Set(leftTop, rightTop);
-				edgeShape.m_vertex0.Set(leftTop.x - 1, leftTop.y);
-				edgeShape.m_vertex3.Set(rightTop.x + 1, leftTop.y);
-				edgeShape.m_hasVertex0 = true;
-				edgeShape.m_hasVertex3 = true;
-				wallBody->CreateFixture(&myFixtureDef);
+				// if solid wall,
+				if (type == "solid_wall") {
 
-				// right
-				edgeShape.Set(rightTop, rightBottom);
-				edgeShape.m_vertex0.Set(rightTop.x, rightTop.y + 1);
-				edgeShape.m_vertex3.Set(rightBottom.x, rightBottom.y - 1);
-				edgeShape.m_hasVertex0 = true;
-				edgeShape.m_hasVertex3 = true;
-				wallBody->CreateFixture(&myFixtureDef);
+					b2EdgeShape edgeShape;
+					myFixtureDef.shape = &edgeShape;
+					myFixtureDef.filter.categoryBits = WALL;
+					myFixtureDef.filter.maskBits = CHARACTER | EFFECT_PARTICLE;
+					// left
+					edgeShape.Set(leftBottom, leftTop);
+					edgeShape.m_vertex0.Set(leftBottom.x, leftBottom.y - 1);
+					edgeShape.m_vertex3.Set(leftTop.x, leftTop.y + 1);
+					edgeShape.m_hasVertex0 = true;
+					edgeShape.m_hasVertex3 = true;
+					wallBody->CreateFixture(&myFixtureDef);
 
-				// bottom
-				edgeShape.Set(leftBottom, rightBottom);
-				edgeShape.m_vertex0.Set(leftBottom.x - 1, leftBottom.y);
-				edgeShape.m_vertex3.Set(rightBottom.x + 1, rightBottom.y);
-				edgeShape.m_hasVertex0 = true;
-				edgeShape.m_hasVertex3 = true;
-				wallBody->CreateFixture(&myFixtureDef);
+					// top
+					edgeShape.Set(leftTop, rightTop);
+					edgeShape.m_vertex0.Set(leftTop.x - 1, leftTop.y);
+					edgeShape.m_vertex3.Set(rightTop.x + 1, leftTop.y);
+					edgeShape.m_hasVertex0 = true;
+					edgeShape.m_hasVertex3 = true;
+					wallBody->CreateFixture(&myFixtureDef);
+
+					// right
+					edgeShape.Set(rightTop, rightBottom);
+					edgeShape.m_vertex0.Set(rightTop.x, rightTop.y + 1);
+					edgeShape.m_vertex3.Set(rightBottom.x, rightBottom.y - 1);
+					edgeShape.m_hasVertex0 = true;
+					edgeShape.m_hasVertex3 = true;
+					wallBody->CreateFixture(&myFixtureDef);
+
+					// bottom
+					edgeShape.Set(leftBottom, rightBottom);
+					edgeShape.m_vertex0.Set(leftBottom.x - 1, leftBottom.y);
+					edgeShape.m_vertex3.Set(rightBottom.x + 1, rightBottom.y);
+					edgeShape.m_hasVertex0 = true;
+					edgeShape.m_hasVertex3 = true;
+					wallBody->CreateFixture(&myFixtureDef);
+				}
+				else if (type == "location") {
+					b2PolygonShape shape;
+					//shape.SetAsBox((w / 2) / SCALE_RATIO, (h / 2) / SCALE_RATIO);
+					b2Vec2 verts[] = { leftBottom, rightBottom, rightTop, leftTop };
+					shape.Set(verts, 4);
+					myFixtureDef.shape = &shape;
+					myFixtureDef.isSensor = true;
+					myFixtureDef.filter.categoryBits = LOCATION;
+					myFixtureDef.filter.maskBits = CHARACTER;
+
+					wallBody->CreateFixture(&myFixtureDef);
+				}
+				
 				//_walls.emplace_back(wallBody);
 
 				//_vecRect.emplace_back(make_tuple(Rect(px, py, w, h), wallBody));
@@ -276,14 +311,20 @@ void STWallBuilder::makeWalls(rapidjson::Document& j, const std::string & level)
 					name_arg = map["name"].GetString();
 				}
 				// _wallType[wallBody] = getWallTypeWithName(tileName);
-				auto type_arg = getWallTypeWithName(tileName);
+
+				// set type arg.
+				WallType type_arg;
+				if (type == "solid_wall") type_arg = WallType::Solid;
+				else if (type == "location") type_arg = WallType::Location;
+				else type_arg = WallType::Location;
+				
 				auto body_arg = wallBody;
 				auto rect_arg = Rect(px, py, w, h);
-
-				_walls.emplace_back(name_arg, type_arg, rect_arg, body_arg);
+				
+				_walls.emplace_back(STWall::create(name_arg, type_arg, rect_arg, body_arg));
 
 				
-
+				/*
 				if (type == "button") {
 					auto actionManager = apHookActionManager::getInstance();
 					auto eventName = map["event"]["name"].GetString();
@@ -298,7 +339,7 @@ void STWallBuilder::makeWalls(rapidjson::Document& j, const std::string & level)
 						}
 					});
 					_buttonOnActions.emplace_back(eventName);
-				}
+				}*/
 
 				// set wall status.
 				/*for (auto fixture = wallBody->GetFixtureList(); fixture != nullptr;
@@ -348,6 +389,10 @@ void STWallBuilder::makeWalls(rapidjson::Document& j, const std::string & level)
 			}
 
 		}
+
+		// to initialize character position.
+		auto actionManager = apHookActionManager::getInstance();
+		actionManager->runHook("after_make_wall");
 
 		//initialize correct Tex.
 		for (int i = 0; i <= _mapArrayWidth; i++) {
@@ -401,7 +446,6 @@ void STWallBuilder::makeWalls(rapidjson::Document& j, const std::string & level)
 		
 
 		// if change x block,
-		auto actionManager = apHookActionManager::getInstance();
 		actionManager->addAction("update_wall_sprite_x", "m", this,
 			[this](int diff) {
 			
@@ -589,16 +633,19 @@ void STWallBuilder::makeWalls(rapidjson::Document& j, const std::string & level)
 
 void STWallBuilder::setCorrectTex(Sprite* sp) {
 	auto p = sp->getPosition();
-	auto index = 0;
+	unsigned int index = 0;
 	while (index < /*##DEBUG## 15*/ /*##OLD## _vecRect.size()*/ _walls.size()) {
 		
 		// if index over, exit.
 		//##OLD## if (_vecRect.size() <= index) return;
 		if (_walls.size() <= index) return;
 
-		// if the sprite gets wall body,
+
+		// if the sprite gets wall body gogo.
+		// if the wall is 'location', then skip.
 		//##OLD## if (std::get<0>(_vecRect[index]).containsPoint(p)) {
-		if(_walls[index]->getRect().containsPoint(p)) {
+		if(_walls[index]->getWallType() != WallType::Location &&
+			_walls[index]->getRect().containsPoint(p)) {
 			sp->setVisible(true);
 			sp->setSpriteFrame(
 				_wallSpriteFrameName[/*##OLD##
@@ -625,8 +672,9 @@ bool STWallBuilder::init()
 	// 960->48, 540->27, 530->27.
 	_mapArrayWidth = 48;
 	int height = Director::getInstance()->getVisibleSize().height;
-	_mapArrayHeight = height / 20;
-	if (height % 20 != 0) {
+	int oneBlockPx = IngameScene::OneBlockPx;
+	_mapArrayHeight = height / oneBlockPx;
+	if (height % oneBlockPx != 0) {
 		_mapArrayHeight++;
 	}
 	// initial Sprite Frame
@@ -639,15 +687,14 @@ bool STWallBuilder::init()
 	_wallSpriteFrameName[WallType::ButtonOn] = "button_on.png";
 	_wallSpriteFrameName[WallType::ButtonOff] = "button_off.png";
 	_wallSpriteFrameName[WallType::Teleport] = "teleport.png";
+	_wallSpriteFrameName[WallType::Location] = "none.png";
 
-
-	auto comp = Component::create();
 	
 	// actions initialize.
 	auto actionManager = apHookActionManager::getInstance();
 	
 	
-	actionManager->addAction("begin_contact", "m", this, [this](b2Contact* contact, b2Fixture* other) {
+	/*actionManager->addAction("begin_contact", "m", this, [this](b2Contact* contact, b2Fixture* other) {
 		// for character pushing button.
 		_shouldCheckButton = true;
 
@@ -658,7 +705,7 @@ bool STWallBuilder::init()
 				wall->runAction(WallButtonActionType::TurnToBreakableWall, other->GetBody());
 			}
 		}
-	});
+	});*/
 	actionManager->addAction("post_solve", "m", this, [this](b2Contact* contact, b2ContactImpulse* impulse, b2Fixture* other) {
 	
 		if (_shouldCheckButton) {
@@ -1244,19 +1291,20 @@ WallType STWallBuilder::getWallTypeWithName(const std::string & name)
 
 WallButtonActionType STWallBuilder::getWallButtonActionType(const std::string & name)
 {
-	if (name == "turn_to_breakable_wall") {
+	if (name == "turn_to_breakable_wall") 
 		return WallButtonActionType::TurnToBreakableWall;
-	}
-	else if (name == "turn_to_solid_wall") {
-		return WallButtonActionType::TurnToSolidWall;
-	}
-	else if (name == "turn_button_off") {
-		return WallButtonActionType::TurnButtonOff;
-	}
-	else if (name == "turn_button_on") {
-		return WallButtonActionType::TurnButtonOn;
-	}
 	
+	else if (name == "turn_to_solid_wall") 
+		return WallButtonActionType::TurnToSolidWall;
+	
+	else if (name == "turn_button_off") 
+		return WallButtonActionType::TurnButtonOff;
+	
+	else if (name == "turn_button_on") 
+		return WallButtonActionType::TurnButtonOn;
+	
+	else 
+		return WallButtonActionType::TurnButtonOff;
 }
 
 STWall * STWallBuilder::getWallByBody(b2Body * body)

@@ -53,7 +53,7 @@ bool AppDelegate::applicationDidFinishLaunching() {
     director->setDisplayStats(true);
 
     // set FPS. the default value is 1.0/60 if you don't call this
-    director->setAnimationInterval(1.0 / 60);
+    director->setAnimationInterval(1.0f / 60.f);
 
 
 
@@ -99,6 +99,9 @@ void AppDelegate::applicationDidEnterBackground() {
     Director::getInstance()->pause();
     // if you use SimpleAudioEngine, it must be pause
     CocosDenshion::SimpleAudioEngine::getInstance()->pauseBackgroundMusic();
+
+	auto dm = apDataManager::getInstance();
+	dm->loadData("user_data.json");
 }
 
 // this function will be called when the app is active again

@@ -32,6 +32,7 @@ enum EntityCategory {
 	BOSS = 0x0004,
 	EFFECT_PARTICLE = 0x0008,
 	ENEMY_AIRCRAFT = 0x0010,
+	LOCATION = 0x0020
 };
 
 enum EffectType {
@@ -61,6 +62,7 @@ class STCamera;
 class GLESDebugDraw;
 class STWallBuilder;
 class STBox2dNode;
+class STWall;
 
 namespace arphomod {
 	class DebugBox;
@@ -151,6 +153,8 @@ private:
 		
 
 		void delFunc(int priority);
+
+		void delAllFunc();
 		UpdateCaller();
 		~UpdateCaller();
 	private:
@@ -193,12 +197,14 @@ public:
 	Vec2 getMasterFieldPosition();
 	Node* getMasterField();
 
+	//Get Wall By Name
+	STWall* getWallByBody(b2Body* body);
+
 	//get debug Box
 	DebugBox* getDebugBox();
 
 	//get character's box2d body.
 	b2Body* getCharBody();
-	std::vector<b2Body*> getWalls();
 
 	// local Scheduler methods.
 	Scheduler* getLocalScheduler() { return _localScheduler; }
@@ -240,7 +246,7 @@ private:
 
 	
 	// box2d world
-	static std::shared_ptr<b2World> world;
+	static std::shared_ptr<b2World> _world;
 
 	float _jumpPower{ 2.0f };
 	float _airResistance{ 0.02f }, _originAirResistance{ 0.0f }, _maxAirResistance{ 1.5f }, _nowMaxAirResistance{ 0.0f };
@@ -314,6 +320,8 @@ private:
 	// it sets true when contact listener begin.
 	// it sets false right after hook action executed.
 	bool _goFloorEffect{ false };
+
+	// used for debug box
 	cocos2d::Vec2 _nowTextPos { Vec2(50.0f, 15.0f) };
 	cocos2d::Vec2 _vibrationOffset {Vec2::ZERO };
 
@@ -344,7 +352,7 @@ private:
 	static std::shared_ptr<STContactListener> _cl_p;
 
 	//GLESDebugDraw *_debugDraw { nullptr };
-	std::vector<b2Body*> _walls;
+
 	bool _checkMoveButton { false };
 	bool _isRight { false };
 
