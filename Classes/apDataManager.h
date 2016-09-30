@@ -30,7 +30,7 @@ public:
 	apDataManager();
 	virtual ~apDataManager();
 
-	std::vector<int> i;
+	// std::vector<int> i;
 
 
 	// singleton.

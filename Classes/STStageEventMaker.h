@@ -13,9 +13,11 @@ public:
 	STStageEventMaker();
 	~STStageEventMaker();
 
+
 private:
 
 	static void makeLevel1();
+	static void makeTutorial();
 };
 
 #endif

@@ -54,8 +54,9 @@ enum MasterFieldZOrder {
 	MFZORDER_CHARNODE = 9,
 	MFZORDER_WALLBUILDER = 10,
 	MFZORDER_EFFGEN = 11,
-	MFZORDER_EMPH_BLACK = 12,
-	MFZORDER_EMPH_CHARNODE = 13
+	MFZORDER_TEXTBOX = 12,
+	MFZORDER_EMPH_BLACK = 14,
+	MFZORDER_EMPH_CHARNODE = 15
 };
 
 class STCamera;
@@ -63,6 +64,7 @@ class GLESDebugDraw;
 class STWallBuilder;
 class STBox2dNode;
 class STWall;
+class STTextBoxNode;
 
 namespace arphomod {
 	class DebugBox;
@@ -92,7 +94,7 @@ private:
 		
 		// t : current time
 		// b : start value
-		// c : change in value
+		// c : change in value b:100, c:-300, if 100%: -200(c+b)
 		// d : duration.
 		// http://www.gizma.com/easing/
 		inline float easeInExpo(float t, float b, float c, float d) {
@@ -206,15 +208,28 @@ public:
 	//get character's box2d body.
 	b2Body* getCharBody();
 
+	//get TextBoxNode
+	STTextBoxNode* getTextBoxNode();
+
+	//get Korean Text from json.
+	string getText(const string& key);
+
+	//get Settings
+	rapidjson::Document& getSettings();
+
 	// local Scheduler methods.
 	Scheduler* getLocalScheduler() { return _localScheduler; }
-	void scheduleLocally(const std::function<void(float)>& callback, float interval, unsigned int repeat, float delay, const std::string &key);
+	void scheduleLocally(const std::function<void(float)>& callback, cocos2d::Node* target, float interval, unsigned int repeat, float delay, const std::string &key);
+	void scheduleLocally(const std::function<void(float)>& callback, cocos2d::Node * target, const std::string & key);
 	void unscheduleLocally(const std::string &key);
 	void scheduleOnceLocally(const std::function<void(float)> &callback, float delay, const std::string &key);
 	Action * runLocalAction(Node* target, Action* action);
 	
 	//getter
 	std::shared_ptr<UpdateCaller> getLocalUpdater();
+
+	//cancel all touching.
+	void cancelAllInput();
 
 
 
@@ -297,6 +312,7 @@ private:
 
 	// json
 	rapidjson::Document _maps;
+	rapidjson::Document _settings;
 
 	// level Name
 	std::string _level{ "" };
@@ -339,6 +355,9 @@ private:
 
 	cocos2d::Node* _masterField { nullptr };
 	STCamera* _camera { nullptr };
+
+	// textBox ex) character saying
+	STTextBoxNode* _textBoxNode{ nullptr };
 
 	
 

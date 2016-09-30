@@ -27,6 +27,7 @@
 #include <random>
 #include <STStageEventMaker.h>
 #include "STWall.h"
+#include "STTextBoxNode.h"
 
 USING_NS_CC;
 
@@ -75,7 +76,7 @@ void IngameScene::appInit()
 	addChild(_debugBox, 999);
 	_debugBox->setAnchorPoint(Vec2::ZERO);
 	_debugBox->setPosition(Vec2(visibleSize.width, 0.f));
-	_debugBox->get() << "abce" << 123 << 1.234 << DebugBox::push;
+	//_debugBox->get() << "abce" << 123 << 1.234 << DebugBox::push;
 
 
 	auto actionManager = apHookActionManager::getInstance();
@@ -151,28 +152,61 @@ void IngameScene::appInit()
 	_camera->setField(_masterField);
 	_backgroundField = Node::create();
 	
+
+	
+
 	//_camera->setContentSize(visibleSize);
 	this->addChild(_camera, 5, "camera");
 	this->addChild(_masterField, 3, "masterField");
 	this->addChild(_backgroundField, 1, "ingameBgNode");
 
+	//settings file load.
+	
+	//_settings.RemoveAllMembers();
+	_settings.Parse(fu->getStringFromFile("settings.json").c_str());
+
 	//color setting
-	_colors["default"] = Color4B(255, 255, 255, 255);
+	for (auto it = _settings["colors"].MemberBegin();
+		it != _settings["colors"].MemberEnd();
+		it++) {
+
+		_colors[it->name.GetString()] = Color4B(
+			it->value["r"].GetInt(),
+			it->value["g"].GetInt(),
+			it->value["b"].GetInt(),
+			it->value["a"].GetInt()
+		);
+	}
+	
+	/*_colors["default"] = Color4B(255, 255, 255, 255);
 	_colors["bg1-1"] = Color4B(76, 44, 40, 255);
 	_colors["bg1-2"] = Color4B(175, 110, 98, 255);
-	_colors["bg1-3"] = Color4B(255, 214, 204, 255);
+	_colors["bg1-3"] = Color4B(255, 214, 204, 255);*/
 
 	//image or resource path setting.
-	_spriteFrames["button_right_onclick"] = "right-onclick.png";
+	//------------------------------------
+
+	for (auto it = _settings["sprite_frames"].MemberBegin();
+		it != _settings["sprite_frames"].MemberEnd();
+		it++) {
+
+		_spriteFrames[it->name.GetString()] = it->value.GetString();
+	}
+	/*_spriteFrames["button_right_onclick"] = "right-onclick.png";
 	_spriteFrames["button_right_noclick"] = "right-noclick.png";
 	_spriteFrames["button_left_onclick"] = "left-onclick.png";
 	_spriteFrames["button_left_noclick"] = "left-noclick.png";
 	_spriteFrames["button_skill_onclick"] = "skill-onclick.png";
 	_spriteFrames["button_skill_noclick"] = "skill-noclick.png";
 	_spriteFrames["button_jump_onclick"] = "jump-onclick.png";
-	_spriteFrames["button_jump_noclick"] = "jump-noclick.png";
+	_spriteFrames["button_jump_noclick"] = "jump-noclick.png";*/
 
-	_plistPath.emplace_back("img/button_sprites.plist");
+	for (auto it = _settings["plist_paths"].Begin();
+		it != _settings["plist_paths"].End();
+		it++) {
+		_plistPath.emplace_back(it->GetString());
+	}
+	//_plistPath.emplace_back("img/button_sprites.plist");
 
 
 	auto spriteFrameCacheManager = SpriteFrameCache::getInstance();
@@ -237,18 +271,35 @@ void IngameScene::organizeScene()
 		label->setTextColor(Color4B(0,0,0,255));
 		stageSelectNode->addChild(label);
 
+		auto label2 = STLabel::createWithTTF(conf, "Tutorial");
+		label2->setPosition(300, 200);
+		label2->setTextColor(Color4B(0, 0, 0, 255));
+		stageSelectNode->addChild(label2);
+
 		auto touchManager = APTouchManager::getInstance();
 		touchManager->registerNode(label, APTouchManager::createCheckerWithRect(label,
 			Rect(-labelSize.width / 2, -labelSize.height / 2, labelSize.width, labelSize.height)));
+		touchManager->registerNode(label2, APTouchManager::createDefaultChecker(label2));
+		touchManager->addHook(label2, APTouchType::EndedIn, "tutorial_clicked");
 		touchManager->addHook(label, APTouchType::EndedIn, "stage_1_clicked");
 		
 		// stage 1 Start Action
 		auto stage1Start = [this]() {
 			apHookActionManager::getInstance()
 				->runHook("out_stage")
-				->runHook("enter_stage1");
+				->runHook("enter_stage", "1");
 		};
 		apHookActionManager::getInstance()->addAction("stage_1_clicked", "stage_1_start",stageSelectNode, std::move(stage1Start));
+	
+		// tutorial Start Action
+		auto tutorialStart = [this]() {
+			apHookActionManager::getInstance()
+				->runHook("out_stage")
+				->runHook("enter_stage", "tutorial");
+		};
+		apHookActionManager::getInstance()->addAction("tutorial_clicked", "tutorialStart", stageSelectNode, std::move(tutorialStart));
+
+	
 	};
 	actionManager->addAction("show_stage_select", "display_stage_select",this, std::move(displayStageSelect));
 
@@ -263,17 +314,30 @@ void IngameScene::organizeScene()
 
 	// display Stage 1
 	auto displayStage1 = [this]() {
-
 		initializeEffectManager();
 		initializePhysics("1");
-		debugVariable();
+		//debugVariable();
 		gameInterface();
 		animationTest();
 		apHookActionManager::getInstance()
 			->runHook("after_display_stage1");
 	};
 	actionManager->addAction("enter_stage1", "display_stage1", this,std::move(displayStage1));
+
+	// display some specific stage.
+	auto displayStage = [this](const char * level) {
+		initializeEffectManager();
+		initializePhysics(level);
+		//debugVariable();
+		gameInterface();
+		//animationTest();
+		apHookActionManager::getInstance()
+			->runHook("after_display_stage", level);
+	};
+	actionManager->addAction("enter_stage", "display_stage", this, std::move(displayStage));
 	
+
+
 	actionManager->addAction("back_to_stage_select", "back_to_stage_select",this, [this]() {
 		apHookActionManager::getInstance()
 			->runHook("remove_stage")
@@ -490,8 +554,11 @@ void IngameScene::animationTest()
 void IngameScene::gameInterface()
 {
 
-	auto buttonSize = Size(150.f, 150.f);
-	auto buttonSpriteSize = Size(110.f, 110.f);
+	auto buttonSizeWidth = _settings["button_size"].GetDouble();
+	auto buttonSpriteSizeWidth = _settings["button_sprite_size"].GetDouble();
+
+	auto buttonSize = Size(buttonSizeWidth, buttonSizeWidth);
+	auto buttonSpriteSize = Size(buttonSpriteSizeWidth, buttonSpriteSizeWidth);
 	auto touchManager = APTouchManager::getInstance();
 	auto visibleSize = Director::getInstance()->getVisibleSize();
 	//---------------
@@ -511,19 +578,91 @@ void IngameScene::gameInterface()
 				buttonSize.width, buttonSize.height)));
 	
 	touchManager->setOrder(leftButton, 10);
-	auto leftOn = [this]()->void {
+
+
+
+	
+
+
+	auto leftOn = [this, buttonSpriteSize]()->void {
+
+		auto left = _camera->getChildByName<Sprite*>("leftButton");
+		left->setSpriteFrame(_spriteFrames["button_left_onclick"]);
+
+		auto scale = left->getScale() * 0.9f;
+		auto scaleTo = ScaleTo::create(0.3f, scale);
+		auto ease = EaseExponentialOut::create(scaleTo);
+		runLocalAction(left, ease);
+
+		if (_checkMoveButton && _isRight) {
+
+			auto right = _camera->getChildByName<Sprite*>("rightButton");
+			right->setSpriteFrame(_spriteFrames["button_right_noclick"]);
+
+			auto scale = buttonSpriteSize.width / right->getContentSize().width;
+			auto scaleTo = ScaleTo::create(0.3f, scale);
+			auto ease = EaseExponentialOut::create(scaleTo);
+			runLocalAction(right, ease);
+		}
+
 		//endDash();
 		_checkMoveButton = true;
 		_isRight = false;
 	};
-	auto rightOn = [this]()->void {
+	auto rightOn = [this, buttonSpriteSize]()->void {
 		//endDash();
+
+		auto right = _camera->getChildByName<Sprite*>("rightButton");
+		right->setSpriteFrame(_spriteFrames["button_right_onclick"]);
+
+		auto scale = right->getScale() * 0.9f;
+		auto scaleTo = ScaleTo::create(0.3f, scale);
+		auto ease = EaseExponentialOut::create(scaleTo);
+		runLocalAction(right, ease);
+
+		if (_checkMoveButton &&	!_isRight) {
+
+			auto left = _camera->getChildByName<Sprite*>("leftButton");
+			left->setSpriteFrame(_spriteFrames["button_left_noclick"]);
+
+			auto scale = buttonSpriteSize.width / left->getContentSize().width;
+			auto scaleTo = ScaleTo::create(0.3f, scale);
+			auto ease = EaseExponentialOut::create(scaleTo);
+			runLocalAction(left, ease);
+		}
+
 		_checkMoveButton = true;
 		_isRight = true;
+
+		
+
 	};
-	auto cancelMove = [this]()->void {
+
+	auto cancelMove = [this, buttonSpriteSize]()->void {
 		apHookActionManager::getInstance()->runHook("dash_end");
 		_checkMoveButton = false;
+		
+		// right sprite change
+		Sprite* scaleSprite = nullptr;
+		if (_isRight) {
+			auto right = _camera->getChildByName<Sprite*>("rightButton");
+			right->setSpriteFrame(_spriteFrames["button_right_noclick"]);
+			scaleSprite = right;
+			
+
+		}
+		// left sprite change
+		else {
+			auto left = _camera->getChildByName<Sprite*>("leftButton");
+			left->setSpriteFrame(_spriteFrames["button_left_noclick"]);
+			scaleSprite = left;
+		}
+
+		auto scale = buttonSpriteSize.width / scaleSprite->getContentSize().width;
+		auto scaleTo = ScaleTo::create(0.3f, scale);
+		auto ease = EaseExponentialOut::create(scaleTo);
+		runLocalAction(scaleSprite, ease);
+
 	};
 	touchManager->addBehavior(leftButton, APTouchType::Began, leftOn,
 		"leftDown", "leftDown_b");
@@ -537,6 +676,7 @@ void IngameScene::gameInterface()
 		"leftEndedInIgnoreBegan", "leftDown_b");
 	touchManager->addBehavior(leftButton, APTouchType::EndedOut, cancelMove,
 		"leftEndedOut", "leftDown_b");
+	
 
 	//---------------
 	// move right button
@@ -588,10 +728,10 @@ void IngameScene::gameInterface()
 		apHookActionManager::getInstance()->runHook("jump_clicked");
 	}, "upDown", "upDownYeah");
 	touchManager->addBehavior(upButton, APTouchType::EndedIn, [this]()->void {
-		jumpTouchEnd();
+		apHookActionManager::getInstance()->runHook("jump_click_end");
 	}, "upEndedIn", "upDownYeah");
 	touchManager->addBehavior(upButton, APTouchType::EndedOut, [this]()->void {
-		jumpTouchEnd();
+		apHookActionManager::getInstance()->runHook("jump_click_end");
 	}, "upEndedOut", "upDownYeah");
 
 	//---------------------
@@ -609,7 +749,6 @@ void IngameScene::gameInterface()
 	touchManager->setOrder(skillButton, 10);
 	touchManager->addBehavior(skillButton, APTouchType::Began, [this]() {
 		apHookActionManager::getInstance()->runHook("skill_clicked");
-		jumpTouchEnd();
 	}, "skillDown", "skillDown_b");
 
 
@@ -694,13 +833,34 @@ void IngameScene::gameInterface()
 	auto am = apHookActionManager::getInstance();
 	am->addAction("jump_clicked", "do_jump", upButton, [this]()->void {
 		// jump must exist only 1 until hit the ground.
-		if (_floorFixtures.empty()) return;
+		if (_floorFixtures.empty()) {
+
+			auto upButton = _camera->getChildByName<Sprite*>("upButton");
+			auto scale1 = ScaleTo::create(0.1f, upButton->getScale() * 1.03f);
+			auto scale2 = ScaleTo::create(0.1f, upButton->getScale());
+			/*auto ease1 = EaseExponentialInOut::create(scale1);
+			auto ease2 = EaseExponentialInOut::create(scale2);*/
+			auto sequence = Sequence::create(scale1, scale2, nullptr);
+			runLocalAction(upButton, sequence);
+
+			return;
+		}
 
 		_charBody->SetLinearVelocity(b2Vec2(_charBody->GetLinearVelocity().x, 0));
 		_charBody->ApplyLinearImpulse(b2Vec2(0, _jumpPower / SCALE_RATIO), _charBody->GetWorldCenter(), true);
 		_charBody->SetGravityScale(_gravityScaleWhenJump);
 
 		_checkJumpHighest = false;
+
+		auto upButton = _camera->getChildByName<Sprite*>("upButton");
+		upButton->setSpriteFrame(_spriteFrames["button_jump_onclick"]);
+		auto scale = ScaleTo::create(0.3f, upButton->getScale() * 0.9f);
+		auto ease = EaseExponentialOut::create(scale);
+		runLocalAction(upButton, ease);
+	});
+
+	am->addAction("jump_click_end", "touch_end", upButton, [this]()->void {
+		jumpTouchEnd();
 	});
 
 	//skill(dash) button clicked
@@ -818,8 +978,6 @@ void IngameScene::gameInterface()
 		int modifiedCount = util.bySameRatio(0.05f, power, 0.20f, 3.f, 18.f);
 		_effectConfs[ROCK_LITTLE_CRACK_FLOOR].count = modifiedCount; 
 		_effectGen->generateEffect(_effectConfs[ROCK_LITTLE_CRACK_FLOOR], _characterNode->getPosition().x, _characterNode->getPosition().y - _boxHeight / 2);
-		
-	
 	});
 
 	am->addAction("slow_motion", "m", _wallBuilder, [this](float start, float duration) {
@@ -891,9 +1049,7 @@ void IngameScene::initializePhysics(const std::string& level)
 		visibleSize.height); //RIGHT*/
 
 
-		//add backgrounds
-
-
+	//add backgrounds
 	using scv = boost::coroutines::symmetric_coroutine<void>;
 
 	apAsyncTaskManager::getInstance()->addTask(
@@ -901,7 +1057,7 @@ void IngameScene::initializePhysics(const std::string& level)
 		_backgroundFollowRatio.clear();
 		_debugBox->get() << "abcedfg" << _debugBox->push;
 
-		if (_level == "1") {
+		if (true/*_level == "1"*/) {
 			auto makeBackground = [this, &yield](
 				float minHeight, float maxHeight, float minLength, float maxLength, Color4B color)
 				->cocos2d::Node* {
@@ -928,6 +1084,7 @@ void IngameScene::initializePhysics(const std::string& level)
 					vs.emplace_back(make_tuple(l, h));
 					//_debugBox->get() << "length : " << l << " height : " << h << _debugBox->push;
 				}
+				yield();
 
 				auto drawnode = DrawNode::create();
 				totalLength = 0;
@@ -941,6 +1098,7 @@ void IngameScene::initializePhysics(const std::string& level)
 							util.switchColor(color));
 						totalLength += length;
 					}
+					yield();
 				};
 				n();
 				n();
@@ -1419,6 +1577,13 @@ void IngameScene::initializePhysics(const std::string& level)
 
 	// event Maker
 	STStageEventMaker::makeStageEvent(level);
+
+
+	// TextBox Maker
+	_textBoxNode = STTextBoxNode::create();
+	_masterField->addChild(_textBoxNode, MFZORDER_TEXTBOX, "text_box_node");
+
+	
 	
 }
 void IngameScene::initializeEffectManager()
@@ -1487,6 +1652,12 @@ void IngameScene::initializeEffectManager()
 
 void IngameScene::jumpTouchEnd() {
 	_charBody->SetGravityScale(1.0f);
+
+	auto upButton = _camera->getChildByName<Sprite*>("upButton");
+	upButton->setSpriteFrame(_spriteFrames["button_jump_noclick"]);
+	auto scale = ScaleTo::create(0.3f, _settings["button_sprite_size"].GetDouble() / upButton->getContentSize().width);
+	auto ease = EaseExponentialOut::create(scale);
+	runLocalAction(upButton, ease);
 
 }
 
@@ -1698,10 +1869,38 @@ b2Body* IngameScene::getCharBody() {
 	return _charBody;
 }
 
+STTextBoxNode * IngameScene::getTextBoxNode()
+{
+	return _textBoxNode;
+}
 
-void IngameScene::scheduleLocally(const std::function<void(float)>& callback, float interval, unsigned int repeat, float delay, const std::string & key)
+string IngameScene::getText(const string & key)
+{
+	if (!_settings.IsObject() || _settings.ObjectEmpty()) return "";
+	return _settings["text_korean"][key.c_str()].GetString();
+}
+
+rapidjson::Document & IngameScene::getSettings()
+{
+	return _settings;
+}
+
+
+/*void IngameScene::scheduleLocally(const std::function<void(float)>& callback, float interval, unsigned int repeat, float delay, const std::string & key)
 {
 	_localScheduler->schedule(callback, this, interval, repeat, delay, !isRunning(), key);
+}*/
+
+void IngameScene::scheduleLocally(const std::function<void(float)>& callback, cocos2d::Node * target, float interval, unsigned int repeat, float delay, const std::string & key)
+{
+	_localScheduler->schedule(callback, target, interval, repeat, delay, !isRunning(), key);
+	auto detachManager = apDetachManager::getInstance();
+	detachManager->addNode(target);
+}
+
+void IngameScene::scheduleLocally(const std::function<void(float)>& callback, cocos2d::Node * target, const std::string & key)
+{
+	scheduleLocally(callback, target, 0.f, CC_REPEAT_FOREVER, 0.f, key);
 }
 
 void IngameScene::unscheduleLocally(const std::string & key)
@@ -1718,12 +1917,22 @@ Action * IngameScene::runLocalAction(Node* target, Action* action)
 {
 	CCASSERT(action != nullptr, "Argument must be non-nil");
 	_localActionManager->addAction(action, target, !target->isRunning());
+	auto detachManager = apDetachManager::getInstance();
+	detachManager->addNode(target);
 	return action;
 }
 
 std::shared_ptr<IngameScene::UpdateCaller> IngameScene::getLocalUpdater()
 {
 	return _localUpdater;
+}
+
+void IngameScene::cancelAllInput()
+{
+	auto am = apHookActionManager::getInstance();
+	am->runHook("rightEndedIn");
+	am->runHook("leftEndedIn");
+	am->runHook("upEndedIn");
 }
 
 IngameScene::IngameScene() {

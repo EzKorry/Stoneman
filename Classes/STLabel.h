@@ -25,6 +25,8 @@ public:
 	virtual float getScale() const override;
 	virtual void setScale(float scaleX, float scaleY) override;
 
+	virtual Size getSizeCalcResolution();
+
 CC_CONSTRUCTOR_ACCESS:
 	/**
 	* Constructor of Label.

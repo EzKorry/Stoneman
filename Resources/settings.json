@@ -1,0 +1,72 @@
+{
+  "button_size":150.0,
+  "button_sprite_size":110.0,
+  "colors": {
+    "default" :{
+      "r":255,
+      "g":255,
+      "b":255,
+      "a":255
+    },
+    "bg1-1" :{
+      "r":76,
+      "g":44,
+      "b":40,
+      "a":255
+    },
+    "bg1-2" :{
+      "r":175,
+      "g":110,
+      "b":98,
+      "a":255
+    },
+    "bg1-3" :{
+      "r":255,
+      "g":214,
+      "b":204,
+      "a":255
+    },
+    "tutorial_ball_up" :{
+      "r":0,
+      "g":0,
+      "b":0,
+      "a":150
+    },
+    "tutorial_ball_down" :{
+      "r":255,
+      "g":128,
+      "b":128,
+      "a":255
+    }
+  },
+  "sprite_frames": {
+    "button_right_onclick":"right-onclick.png",
+  	"button_right_noclick":"right-noclick.png",
+  	"button_left_onclick":"left-onclick.png",
+  	"button_left_noclick":"left-noclick.png",
+  	"button_skill_onclick":"skill-onclick.png",
+  	"button_skill_noclick":"skill-noclick.png",
+  	"button_jump_onclick":"jump-onclick.png",
+  	"button_jump_noclick":"jump-noclick.png",
+    "tutorial_ball":"circle.png"
+  },
+  "plist_paths": [
+    "img/button_sprites.plist",
+    "img/effect_sprites.plist"
+
+  ],
+  "font_paths":{
+    "nanum_square_bold": "fonts/NanumSquareB.ttf",
+    "nanum_square_regular": "fonts/NanumSquareR.ttf",
+    "spoqa_han_bold" : "fonts/SpoqaHsBold.ttf",
+    "spoqa_han_regular" : "fonts/SpoqaHsRegular.ttf",
+    "spoqa_han_thin" : "fonts/SpoqaHsThin.ttf",
+    "luckiest_guy" : "fonts/LuckiestGuy.ttf",
+    "baemin_dohyun" : "fonts/BMDOHYEON_ttf.ttf",
+    "arial": "fonts/arial.ttf"
+  },
+  "text_korean" :{
+      "power_hit":"파워라는 벽에 맞았어. 벽은 꽤 아픈 것 같아. 어떡하면 좋지."
+  }
+
+}

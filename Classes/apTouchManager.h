@@ -52,6 +52,7 @@ enum class APTouchType{
 	EndedIn,
 	EndedInIgnoreBegan,
 	EndedOut,
+	EndedOutIgnoreBegan,
 	Cancelled,
 
 };

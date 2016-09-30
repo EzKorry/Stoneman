@@ -200,6 +200,10 @@ public:
 	template<class TString, class... Args>
 	shared_ptr<apHookActionManager> runHook(TString&& hook, Args&&... args) {
 		using ActionType = Actions<std::function<void(typename std::decay<Args>::type...)>>;
+		
+		//for Debug
+		auto func = std::function<void(typename std::decay<Args>::type...)>();
+		
 		auto& list = ActionType::list;
 		if (list.find(forward<TString>(hook)) != list.end()) {
 			for (auto& item : list[forward<TString>(hook)]) {

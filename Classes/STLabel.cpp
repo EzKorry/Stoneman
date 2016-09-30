@@ -109,6 +109,11 @@ void STLabel::setScale(float scaleX, float scaleY)
 	Node::setScale(scaleX * AppDelegate::resolutionRatio, scaleY * AppDelegate::resolutionRatio);
 }
 
+Size STLabel::getSizeCalcResolution()
+{
+	return getContentSize() / AppDelegate::resolutionRatio;
+}
+
 STLabel::STLabel(TextHAlignment hAlignment /*= TextHAlignment::LEFT*/,
 	TextVAlignment vAlignment /*= TextVAlignment::TOP*/) : Label(hAlignment, vAlignment) {
 }
